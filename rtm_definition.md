@@ -1,6 +1,8 @@
 # Rooted Tree Machines
 
-Rooted Tree Machine (RTM) is a computation model operating on *terms*.
+Rooted Tree Machine (RTM) is a computation model operating on *terms*. The definitions below
+use ideas from term rewriting systems (TRS) and functional language features in e.g.
+ML/Haskell/Rust.
 
 ---
 
@@ -10,6 +12,11 @@ where:
 - `Types` is a finite set
 - `arity: Types -> \N` is a function
 - `childTypes: T \mapsto \powerset(Types)^arity(T)` for `T \in Types`
+
+---
+
+*Note.* A signature corresponds to a many-sorted constructor signature in TRS, or an algebraic data
+type definition in functional languages.
 
 ---
 
@@ -78,6 +85,12 @@ Let `TermsVar(Signature)` be a union of terms with variables for all types in `S
 
 ---
 
+*Note.* As a TRS, these conditions make the system *linear* — each variable binds at most once per
+side. Variables in `t_left` may be absent from `t_right` (*erasing* rules). Terms with variables
+correspond to patterns in functional languages.
+
+---
+
 **Definition.** A *substitution* is a map `\sigma: Variables -> Terms(Signature)`. Applying `\sigma`
 to a term with variables replaces each variable with its image.
 
@@ -136,3 +149,11 @@ signature and `Rules` is an ordered list of rules.
 - The machine halts if no rule can be applied, outputting the last term.
 
 We admit the machine to run indefinitely if a rule is always applicable.
+
+---
+
+*Note.* In TRS terminology, an RTM is a *priority root-rewrite system*: rules apply only at the
+root (not at arbitrary subterm positions as in standard TRS), and the first matching rule takes
+priority — exactly the semantics of `match`/`case` syntax in functional languages.
+
+---
