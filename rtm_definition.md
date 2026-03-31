@@ -13,7 +13,7 @@ where:
 
 ---
 
-**Definition.** Let `TypeDef` be a given type definition and `T \in Typedef.TypeIdents`.
+**Definition.** Let `TypeDef` be a given type definition and `T \in TypeDef.TypeIdents`.
 Recursively define `Terms(T)` *terms of type `T`* such that:
 
 - Denote `TypeDef.arity(T) = k` and `TypeDef.typedef(T) = (U_1, ..., U_k)`.
@@ -62,7 +62,7 @@ Let `TypeDef` be a type definition. For `T \in TypeDef.TypeIdents` define `Terms
 *terms with variables of type `T`* such that:
 
 - `Variables \subset TermsVar(T)`
-- Denote `TypeDef.arity(T) = k` and `TypeDef.typedef(T) = (T_1, ..., T_k)`.
+- Denote `TypeDef.arity(T) = k` and `TypeDef.typedef(T) = (U_1, ..., U_k)`.
   If `t_i \in TermsVar(T'_i)` for some `T'_i \in U_i`, then `T(t_1, ..., t_k) \in TermsVar(T)`.
 
 Let `TermsVar(TypeDef)` be a union of terms with variables for all types in `TypeDef.TypeIdents`.
@@ -70,7 +70,7 @@ Let `TermsVar(TypeDef)` be a union of terms with variables for all types in `Typ
 ---
 
 **Definition.** Let `TypeDef` be a type definition. A *rewrite rule* is a tuple
-`rule = (t_left, t_right) \in TermsVar(Typedef)^2` such that:
+`rule = (t_left, t_right) \in TermsVar(TypeDef)^2` such that:
 
 - Every variable in `t_left` occurs at most once
 - Every variable in `t_right` occurs at most once
@@ -78,9 +78,14 @@ Let `TermsVar(TypeDef)` be a union of terms with variables for all types in `Typ
 
 ---
 
-**Definition.** Let `t \in Terms(TypeDef)` be a term and `rule = (t_left, t_right)` a rewriting
-rule. Then *`rule` can be applied at `t`* if the term "matches at the root" (won't define formally).
-We also define *`t` rewritten by `rule`* naturally.
+**Definition.** A *substitution* is a map `\sigma: Variables -> Terms(TypeDef)`. Applying `\sigma`
+to a term with variables replaces each variable with its image.
+
+---
+
+**Definition.** Let `t \in Terms(TypeDef)` be a term and `rule = (t_left, t_right)` a rewrite
+rule. Then *`rule` can be applied at `t`* if there exists a substitution `\sigma` such that
+`\sigma(t_left) = t`. We define *`t` rewritten by `rule`* as `\sigma(t_right)`.
 
 ---
 
@@ -100,18 +105,18 @@ t = BinNode(
     Leaf,
     BinNode(
         Leaf,
-        Leaf
-    )
+        Leaf,
+    ),
 ),
 t1_left = BinNode(
-    Leaf
+    Leaf,
     x,
 ),
 t1_right = x
 
 t2_left = BinNode(
     x,
-    Leaf
+    Leaf,
 ),
 t2_right = x
 ```
@@ -129,3 +134,5 @@ definition and `Rules` is an ordered list of rules.
 - In one *step* the machine rewrites the term `t_i -> t_{i+1}` with the first rule in the list
   that can be applied.
 - The machine halts if no rule can be applied, outputting the last term.
+
+We admit the machine to run indefinitely if a rule is always applicable.
