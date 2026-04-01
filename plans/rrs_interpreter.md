@@ -43,7 +43,7 @@ index.html
 > - Added a `Program` type that bundles `Signature`, `Rule[]`, and `input: Term` — the parser should return this
 > - `TypeSet` is `Set<string>` — used in `TypeInfo.childTypes` array
 
-### 2. Parser (`parser.ts`)
+### 2. Parser (`parser.ts`) ✅
 - Parse the text format from the definition:
   ```
   signature:
@@ -58,6 +58,14 @@ index.html
       Cons(Zero, Cons(Zero, Zero))
   ```
 - Recursive descent parser, no external library needed
+
+> **Implementation notes for next steps:**
+> - `parse(source: string): Program` is the public API — tokenizes then parses
+> - `ParseError` class has `line` and `col` fields for error reporting in the UI
+> - Variable detection: lowercase-start identifiers are variables, uppercase-start are type constructors
+> - Validation is done during parsing: arity checks, child type checks, free variable checks on rules
+> - Labeled child syntax (`tail: Cons | Zero`) is supported — label is parsed and discarded
+> - `#` line comments are supported
 
 ### 3. Interpreter (`interpreter.ts`)
 - `match(pattern: TermVar, term: Term): Substitution | null` — root-only matching
