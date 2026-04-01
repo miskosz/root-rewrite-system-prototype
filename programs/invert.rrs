@@ -1,0 +1,32 @@
+signature:
+    const V0
+    const V1
+    const End
+    type List:
+        head: V0 | V1
+        tail: List | End
+
+    type Input:
+        List | End
+    type Output:
+        List | End
+
+    type Start:
+        input_: List | End
+        rev: List | End
+    type Rev:
+        rev: List | End
+        output: List | End
+
+rules:
+    Input(x) -> Start(x, End)
+    Start(List(V0, tail), rev) -> Start(tail, List(V1, rev))
+    Start(List(V1, tail), rev) -> Start(tail, List(V0, rev))
+    Start(End, rev) -> Rev(rev, End)
+    Rev(List(x, tail), inv) -> Rev(tail, List(x, inv))
+    Rev(End, inv) -> Output(inv)
+
+input:
+    Input(
+        List(V0, List(V1, List(V1, End)))
+    )

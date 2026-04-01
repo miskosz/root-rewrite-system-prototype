@@ -1,0 +1,19 @@
+signature:
+    const V0
+    const V1
+    const End
+    type List:
+        head: V0 | V1
+        tail: List | End
+    type Start:
+        input_: List | End
+        rev: List | End
+
+rules:
+    Start(List(head, tail), rev) -> Start(tail, List(head, rev))
+
+input:
+    Start(
+        List(V0, List(V1, List(V1, End))),
+        End
+    )
