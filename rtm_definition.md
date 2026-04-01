@@ -1,6 +1,6 @@
-# Rooted Tree Machines
+# Root Rewrite Systems
 
-Rooted Tree Machine (RTM) is a computation model operating on *terms*. The definitions below
+Root Rewrite System (RRS) is a computation model operating on *terms*. The definitions below
 use ideas from term rewriting systems (TRS) and functional language features in e.g.
 ML/Haskell/Rust.
 
@@ -49,7 +49,7 @@ A more convenient notation for signature:
 ```
 signature:
     const Zero
-    type Cons
+    type Cons:
         Cons | Zero
 ```
 
@@ -58,7 +58,7 @@ Optionally we may want to name the components:
 ```
 signature:
     const Zero
-    type Cons
+    type Cons:
         tail: Cons | Zero
 ```
 
@@ -76,23 +76,30 @@ Let `TermsVar(Signature)` be a union of terms with variables for all types in `S
 
 ---
 
+**Definition.** A *substitution* is a map `\sigma: Variables -> Terms(Signature)`. Applying `\sigma`
+to a term with variables replaces each variable with its image.
+
+---
+
 **Definition.** Let `Signature` be a signature. A *rewrite rule* is a tuple
 `rule = (t_left, t_right) \in TermsVar(Signature)^2` such that:
 
 - Every variable in `t_left` occurs at most once
 - Every variable in `t_right` occurs at most once
 - Every variable in `t_right` occurs in `t_left`
+- For any substitution `\sigma` such that `\sigma(t_left) \in Terms(Signature)`,
+  it must hold that `\sigma(t_right) \in Terms(Signature)`.
 
 ---
 
-*Note.* As a TRS, these conditions make the system *linear* — each variable binds at most once per
+*Note.* As a TRS, these conditions make the system *linear* - each variable binds at most once per
 side. Variables in `t_left` may be absent from `t_right` (*erasing* rules). Terms with variables
 correspond to patterns in functional languages.
 
 ---
 
-**Definition.** A *substitution* is a map `\sigma: Variables -> Terms(Signature)`. Applying `\sigma`
-to a term with variables replaces each variable with its image.
+*Note.* The last condition in the definition is to guarantee that a variable in `t_left` and
+`t_right` substitutes terms of the same type.
 
 ---
 
@@ -140,20 +147,21 @@ the second coordinates do not match - `t.2` is not `Leaf`.
 
 ---
 
-**Definition.** *Rooted Tree Machine* is a tuple `RTM = (Signature, Rules)` where `Signature` is a
+**Definition.** *Root Rewrite System* is a tuple `RRS = (Signature, Rules)` where `Signature` is a
 signature and `Rules` is an ordered list of rules.
 
 - The machine is provided a term `input = t_0 \in Terms(Signature)` on the input.
 - In one *step* the machine rewrites the term `t_i -> t_{i+1}` with the first rule in the list
   that can be applied.
-- The machine halts if no rule can be applied, outputting the last term.
+- The sequence terminates at `t_n` if no rule applies to `t_n`. In this case, `t_n` is called the
+  *normal form* of `t_0`, and is the output of the machine.
 
 We admit the machine to run indefinitely if a rule is always applicable.
 
 ---
 
-*Note.* In TRS terminology, an RTM is a *priority root-rewrite system*: rules apply only at the
+*Note.* In TRS terminology, an RRS is a *priority root-rewrite system*: rules apply only at the
 root (not at arbitrary subterm positions as in standard TRS), and the first matching rule takes
-priority — exactly the semantics of `match`/`case` syntax in functional languages.
+priority - exactly the semantics of `match`/`case` syntax in functional languages.
 
 ---
