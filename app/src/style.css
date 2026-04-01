@@ -118,6 +118,20 @@ main {
   background: var(--accent-hover);
 }
 
+/* Resize handle */
+#resize-handle {
+  width: 5px;
+  cursor: col-resize;
+  background: var(--border);
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+#resize-handle:hover,
+#resize-handle.dragging {
+  background: var(--accent);
+}
+
 /* Right pane: tree */
 #tree-pane {
   flex: 1;
