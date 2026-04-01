@@ -67,11 +67,17 @@ index.html
 > - Labeled child syntax (`tail: Cons | Zero`) is supported — label is parsed and discarded
 > - `#` line comments are supported
 
-### 3. Interpreter (`interpreter.ts`)
+### 3. Interpreter (`interpreter.ts`) ✅
 - `match(pattern: TermVar, term: Term): Substitution | null` — root-only matching
 - `applySubstitution(pattern: TermVar, sub: Substitution): Term`
 - `step(rules: Rule[], term: Term): { term: Term, ruleIndex: number } | null` — try rules in order, return new term + which rule matched, or null if normal form
 - `run(rules: Rule[], term: Term, maxSteps?: number): Term` — run to normal form
+
+> **Implementation notes for next steps:**
+> - `match()` handles repeated variables correctly — if a variable appears twice in a pattern, both occurrences must bind to structurally equal terms
+> - `step()` returns a `StepResult` interface (`{ term, ruleIndex }`) — useful for the UI to highlight which rule fired
+> - `run()` defaults to 1000 max steps to prevent infinite loops
+> - All functions are pure — no side effects, easy to call from UI layer
 
 ### 4. SVG tree rendering (`tree-render.ts`)
 - Simple top-down recursive layout:
