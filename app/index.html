@@ -2,12 +2,39 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>app</title>
+    <title>RRS Interpreter</title>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app">
+      <header>
+        <h1>Root Rewrite System</h1>
+      </header>
+      <main>
+        <div id="editor-pane">
+          <textarea id="source" spellcheck="false">signature:
+    const Zero
+    type Succ:
+        Zero | Succ
+
+rules:
+    Succ(Zero) -> Zero
+
+input:
+    Succ(Succ(Zero))</textarea>
+          <div id="controls">
+            <button id="btn-parse">Parse</button>
+            <button id="btn-step" disabled>Step</button>
+            <button id="btn-run" disabled>Run</button>
+            <button id="btn-reset" disabled>Reset</button>
+          </div>
+        </div>
+        <div id="tree-pane">
+          <div id="tree-container"></div>
+        </div>
+      </main>
+      <div id="status-bar">Ready</div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

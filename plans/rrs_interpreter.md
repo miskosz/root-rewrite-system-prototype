@@ -94,7 +94,7 @@ index.html
 > - Text width is estimated with a monospace heuristic (~0.62 * fontSize per char) — good enough for prototype
 > - Constants at top of file control spacing: `H_GAP`, `V_GAP`, `NODE_HEIGHT`, `FONT_SIZE`, `NODE_PADDING_X`
 
-### 5. Web UI (`app.ts`, `index.html`)
+### 5. Web UI (`app.ts`, `index.html`) ✅
 - **Left pane**: `<textarea>` for the RRS program (signature + rules + input)
 - **Right pane**: SVG container for the tree visualization
 - **Controls**: Parse / Step / Run / Reset buttons
@@ -104,6 +104,15 @@ index.html
   2. Input term renders as a tree
   3. Each "Step" click calls `step()`, re-renders tree, highlights matched rule
   4. "Run" executes all steps (with configurable max)
+
+> **Implementation notes:**
+> - `initApp()` in `app.ts` wires up all DOM elements and event handlers
+> - Replaced the Vite boilerplate in `index.html`, `main.ts`, and `style.css`
+> - Layout: fixed-width left editor pane (380px), flexible right tree pane
+> - Parse button validates and renders the initial term; Step/Run/Reset are disabled until a successful parse
+> - Run uses a loop with `step()` (max 1000 steps) rather than the `run()` function, so it can count steps
+> - Status bar shows colored messages: success (green) for normal operation, error (red) for parse errors or step limits
+> - A default Nat example program is pre-loaded in the textarea
 
 ## Key Design Decisions
 
