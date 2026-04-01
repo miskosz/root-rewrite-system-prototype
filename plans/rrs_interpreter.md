@@ -30,12 +30,18 @@ index.html
 
 ## Implementation Steps
 
-### 1. Core types (`types.ts`)
+### 1. Core types (`types.ts`) ✅
 - `Signature`: map of type names to `{ arity, childTypes }`
 - `Term`: `{ typeName: string, children: Term[] }`
 - `TermVar`: `Term | { variable: string }`
 - `Rule`: `{ left: TermVar, right: TermVar }`
 - `Substitution`: `Map<string, Term>`
+
+> **Implementation notes for next steps:**
+> - Project lives in `app/` subfolder (Vite + vanilla-ts template)
+> - `TermVar` uses a discriminated union with `kind: "term" | "variable"` — the parser and interpreter must construct/match on this `kind` field
+> - Added a `Program` type that bundles `Signature`, `Rule[]`, and `input: Term` — the parser should return this
+> - `TypeSet` is `Set<string>` — used in `TypeInfo.childTypes` array
 
 ### 2. Parser (`parser.ts`)
 - Parse the text format from the definition:
