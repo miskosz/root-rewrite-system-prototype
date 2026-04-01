@@ -79,13 +79,20 @@ index.html
 > - `run()` defaults to 1000 max steps to prevent infinite loops
 > - All functions are pure — no side effects, easy to call from UI layer
 
-### 4. SVG tree rendering (`tree-render.ts`)
+### 4. SVG tree rendering (`tree-render.ts`) ✅
 - Simple top-down recursive layout:
   - Each node is a labeled rectangle/circle with the type name
   - Children are spaced horizontally below
   - Edges connect parent to children
 - Highlight the root node when a rewrite just occurred
 - Re-render on each step
+
+> **Implementation notes for next steps:**
+> - `renderTree(term, container, highlightRoot?)` is the public API — pass an HTMLElement and it replaces its contents with an SVG
+> - Two-pass layout: bottom-up sizing (`layoutTree`) then top-down positioning (`positionTree`)
+> - `highlightRoot = true` colors the root node yellow/amber to indicate a rewrite just happened
+> - Text width is estimated with a monospace heuristic (~0.62 * fontSize per char) — good enough for prototype
+> - Constants at top of file control spacing: `H_GAP`, `V_GAP`, `NODE_HEIGHT`, `FONT_SIZE`, `NODE_PADDING_X`
 
 ### 5. Web UI (`app.ts`, `index.html`)
 - **Left pane**: `<textarea>` for the RRS program (signature + rules + input)
