@@ -6,11 +6,21 @@ import {
 
 // ── Colors ──────────────────────────────────────────────────────────────
 
-const VAR_FILL = "#ede9fe";
-const VAR_STROKE = "#8b5cf6";
 const RULE_FILL = "#fef3c7";
 const RULE_STROKE = "#f59e0b";
 const EDGE_COLOR = "#888";
+
+/** 8-color palette for variable subtrees (fill, stroke). */
+const VAR_PALETTE: Array<{ fill: string; stroke: string }> = [
+  { fill: "#ede9fe", stroke: "#8b5cf6" }, // violet
+  { fill: "#dbeafe", stroke: "#3b82f6" }, // blue
+  { fill: "#d1fae5", stroke: "#10b981" }, // emerald
+  { fill: "#fce7f3", stroke: "#ec4899" }, // pink
+  { fill: "#ffedd5", stroke: "#f97316" }, // orange
+  { fill: "#e0e7ff", stroke: "#6366f1" }, // indigo
+  { fill: "#ccfbf1", stroke: "#14b8a6" }, // teal
+  { fill: "#fef9c3", stroke: "#eab308" }, // yellow
+];
 
 // ── Timing ──────────────────────────────────────────────────────────────
 
@@ -235,10 +245,19 @@ export async function animateStep(
     oldEdgeLines.push(line);
   }
 
+  // Assign each variable a distinct color from the palette
+  const varColors = new Map<string, { fill: string; stroke: string }>();
+  let colorIdx = 0;
+  for (const name of oldVarLayouts.keys()) {
+    varColors.set(name, VAR_PALETTE[colorIdx % VAR_PALETTE.length]);
+    colorIdx++;
+  }
+
   // Render variable subtrees as movable groups
   const varGroups = new Map<string, SVGGElement>();
   for (const [name, layout] of oldVarLayouts) {
-    const g = renderSubtreeGroup(layout, VAR_FILL, VAR_STROKE);
+    const c = varColors.get(name)!;
+    const g = renderSubtreeGroup(layout, c.fill, c.stroke);
     rootG.appendChild(g);
     varGroups.set(name, g);
   }
