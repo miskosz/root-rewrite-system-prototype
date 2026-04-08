@@ -1,6 +1,7 @@
 import { parse, ParseError } from "../core/parser";
 import { step } from "../core/interpreter";
 import { renderTree } from "./tree-render";
+import { highlight } from "./highlight";
 import type { Term, Rule } from "../core/types";
 
 export function initApp(): void {
@@ -32,6 +33,24 @@ export function initApp(): void {
     document.addEventListener("mouseup", onMouseUp);
   });
 
+  const highlightCode = document.getElementById("highlight-code")!;
+
+  function updateHighlight() {
+    highlightCode.innerHTML = highlight(sourceEl.value);
+  }
+
+  // Initial highlight
+  updateHighlight();
+
+  sourceEl.addEventListener("input", updateHighlight);
+
+  // Sync scroll between textarea and highlight layer
+  const highlightLayer = document.getElementById("highlight-layer")!;
+  sourceEl.addEventListener("scroll", () => {
+    highlightLayer.scrollTop = sourceEl.scrollTop;
+    highlightLayer.scrollLeft = sourceEl.scrollLeft;
+  });
+
   sourceEl.addEventListener("keydown", (e) => {
     if (e.key === "Tab") {
       e.preventDefault();
@@ -39,6 +58,7 @@ export function initApp(): void {
       const end = sourceEl.selectionEnd;
       sourceEl.value = sourceEl.value.substring(0, start) + "    " + sourceEl.value.substring(end);
       sourceEl.selectionStart = sourceEl.selectionEnd = start + 4;
+      updateHighlight();
     }
   });
 

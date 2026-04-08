@@ -12,7 +12,9 @@
       </header>
       <main>
         <div id="editor-pane">
-          <textarea id="source" spellcheck="false">signature:
+          <div id="editor-wrapper">
+            <pre id="highlight-layer" aria-hidden="true"><code id="highlight-code"></code></pre>
+            <textarea id="source" spellcheck="false">signature:
     const Zero
     type Succ:
         Zero | Succ
@@ -22,6 +24,7 @@ rules:
 
 input:
     Succ(Succ(Zero))</textarea>
+          </div>
           <div id="controls">
             <button id="btn-parse">Parse</button>
             <button id="btn-step" disabled>Step</button>
