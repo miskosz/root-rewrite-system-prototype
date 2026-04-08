@@ -3,7 +3,6 @@ import {
   SVG_NS, NODE_RX, NODE_HEIGHT, FONT_SIZE,
   type LayoutNode, layoutTree, positionTree,
 } from "./tree-render";
-import { renderTree } from "./tree-render";
 
 // ── Colors ──────────────────────────────────────────────────────────────
 
@@ -123,6 +122,23 @@ function renderSubtreeGroup(layout: LayoutNode, fill: string, stroke: string): S
   return g;
 }
 
+const NORMAL_FILL = "#e0f2fe";
+const NORMAL_STROKE = "#38bdf8";
+
+/** Render a positioned layout tree into an SVG group with normal (blue) colors. */
+function renderLayoutInto(node: LayoutNode, parent: SVGGElement): void {
+  const g = document.createElementNS(SVG_NS, "g");
+  for (const child of node.children) {
+    g.appendChild(createEdge(node.x, node.y + NODE_HEIGHT, child.x, child.y));
+  }
+  g.appendChild(createNodeRect(node.x, node.y, node.nodeWidth, NORMAL_FILL, NORMAL_STROKE));
+  g.appendChild(createNodeText(node.x, node.y, node.term.typeName));
+  parent.appendChild(g);
+  for (const child of node.children) {
+    renderLayoutInto(child, parent);
+  }
+}
+
 // ── Easing ──────────────────────────────────────────────────────────────
 
 function easeInOutCubic(t: number): number {
@@ -162,10 +178,16 @@ export async function animateStep(
   const padding = 20;
 
   const oldLayout = layoutTree(oldTerm);
-  positionTree(oldLayout, oldLayout.width / 2 + padding, padding);
-
   const newLayout = layoutTree(newTerm);
-  positionTree(newLayout, newLayout.width / 2 + padding, padding);
+
+  // Pin both roots at the container's horizontal centre so the root never
+  // jumps on screen, matching what renderTree does.
+  const containerWidth = container.clientWidth;
+  const maxHalf = Math.max(oldLayout.width, newLayout.width) / 2;
+  const rootCx = Math.max(containerWidth / 2, maxHalf + padding);
+
+  positionTree(oldLayout, rootCx, padding);
+  positionTree(newLayout, rootCx, padding);
 
   // ── Annotate ──
   const oldAnnotated = annotateTree(rule.left, oldLayout);
@@ -175,7 +197,8 @@ export async function animateStep(
   const newVarLayouts = collectVarLayouts(newAnnotated);
 
   // ── SVG setup ──
-  const svgWidth = Math.max(oldLayout.width, newLayout.width) + padding * 2;
+  const maxHalfWidth = Math.max(oldLayout.width, newLayout.width) / 2;
+  const svgWidth = Math.max(containerWidth, rootCx + maxHalfWidth + padding);
   const svgHeight = Math.max(oldLayout.height, newLayout.height) + padding * 2;
 
   container.innerHTML = "";
@@ -184,7 +207,6 @@ export async function animateStep(
   svg.setAttribute("height", String(svgHeight));
   svg.setAttribute("viewBox", `0 0 ${svgWidth} ${svgHeight}`);
   svg.style.display = "block";
-  svg.style.margin = "0 auto";
   container.appendChild(svg);
 
   const rootG = document.createElementNS(SVG_NS, "g") as SVGGElement;
@@ -314,6 +336,18 @@ export async function animateStep(
     requestAnimationFrame(tick);
   });
 
-  // ── Settle: clean render ──
-  renderTree(newTerm, container);
+  // ── Settle: re-render new tree in-place with normal colors ──
+  // Clear the animated content but reuse the same SVG to avoid dimension jumps
+  while (rootG.firstChild) rootG.removeChild(rootG.firstChild);
+
+  // Resize SVG to fit the new tree (root stays at container centre)
+  const finalRight = rootCx + newLayout.width / 2;
+  const finalWidth = Math.max(containerWidth, finalRight + padding);
+  const finalHeight = newLayout.height + padding * 2;
+  svg.setAttribute("width", String(finalWidth));
+  svg.setAttribute("height", String(finalHeight));
+  svg.setAttribute("viewBox", `0 0 ${finalWidth} ${finalHeight}`);
+
+  // newLayout is already positioned with root at rootCx — just render
+  renderLayoutInto(newLayout, rootG);
 }

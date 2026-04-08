@@ -134,9 +134,17 @@ export function renderTree(term: Term, container: HTMLElement, highlightRoot = f
 
   const layout = layoutTree(term);
   const padding = 20;
-  positionTree(layout, layout.width / 2 + padding, padding);
 
-  const svgWidth = layout.width + padding * 2;
+  // Pin the root at the horizontal centre of the container so it stays
+  // fixed on screen regardless of tree shape.
+  const containerWidth = container.clientWidth;
+  const rootCx = Math.max(containerWidth / 2, layout.width / 2 + padding);
+  positionTree(layout, rootCx, padding);
+
+  // SVG must be wide enough for whichever side of the tree extends further.
+  const treeLeft = rootCx - layout.width / 2;
+  const treeRight = rootCx + layout.width / 2;
+  const svgWidth = Math.max(containerWidth, treeRight + padding, -treeLeft + padding + containerWidth);
   const svgHeight = layout.height + padding * 2;
 
   const svg = document.createElementNS(SVG_NS, "svg");
@@ -144,7 +152,6 @@ export function renderTree(term: Term, container: HTMLElement, highlightRoot = f
   svg.setAttribute("height", String(svgHeight));
   svg.setAttribute("viewBox", `0 0 ${svgWidth} ${svgHeight}`);
   svg.style.display = "block";
-  svg.style.margin = "0 auto";
 
   const g = document.createElementNS(SVG_NS, "g") as SVGGElement;
   svg.appendChild(g);
