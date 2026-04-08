@@ -32,6 +32,16 @@ export function initApp(): void {
     document.addEventListener("mouseup", onMouseUp);
   });
 
+  sourceEl.addEventListener("keydown", (e) => {
+    if (e.key === "Tab") {
+      e.preventDefault();
+      const start = sourceEl.selectionStart;
+      const end = sourceEl.selectionEnd;
+      sourceEl.value = sourceEl.value.substring(0, start) + "    " + sourceEl.value.substring(end);
+      sourceEl.selectionStart = sourceEl.selectionEnd = start + 4;
+    }
+  });
+
   let rules: Rule[] = [];
   let currentTerm: Term | null = null;
   let inputTerm: Term | null = null;
