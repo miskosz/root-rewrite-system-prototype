@@ -54,8 +54,8 @@ main {
 
 /* Left pane: editor */
 #editor-pane {
-  width: 380px;
-  min-width: 300px;
+  flex: 1;
+  min-width: 200px;
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--border);

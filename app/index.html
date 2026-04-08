@@ -17,19 +17,24 @@
             <textarea id="source" spellcheck="false">signature:
     const Zero
     type Succ:
-        Zero | Succ
+        Succ | Zero
+
+    type SumInput:
+        Succ | Zero
+        Succ | Zero
+    type SumOutput:
+        Succ | Zero
 
 rules:
-    Succ(Zero) -> Zero
-
+    SumInput(Succ(ltail), right) -> SumInput(ltail, Succ(right))
+    SumInput(Zero, right) -> SumOutput(right)
 input:
-    Succ(Succ(Zero))</textarea>
+    SumInput(Succ(Succ(Succ(Zero))), Succ(Succ(Zero)))</textarea>
           </div>
           <div id="controls">
-            <button id="btn-parse">Parse</button>
+            <button id="btn-parse">Load</button>
             <button id="btn-step" disabled>Step</button>
             <button id="btn-run" disabled>Run</button>
-            <button id="btn-reset" disabled>Reset</button>
           </div>
         </div>
         <div id="resize-handle"></div>

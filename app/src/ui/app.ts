@@ -12,7 +12,6 @@ export function initApp(): void {
   const btnParse = document.getElementById("btn-parse") as HTMLButtonElement;
   const btnStep = document.getElementById("btn-step") as HTMLButtonElement;
   const btnRun = document.getElementById("btn-run") as HTMLButtonElement;
-  const btnReset = document.getElementById("btn-reset") as HTMLButtonElement;
 
   // Resize handle logic
   const editorPane = document.getElementById("editor-pane")!;
@@ -23,6 +22,7 @@ export function initApp(): void {
     resizeHandle.classList.add("dragging");
     const onMouseMove = (e: MouseEvent) => {
       const newWidth = Math.max(200, Math.min(e.clientX, window.innerWidth - 200));
+      editorPane.style.flex = 'none';
       editorPane.style.width = `${newWidth}px`;
     };
     const onMouseUp = () => {
@@ -65,7 +65,6 @@ export function initApp(): void {
 
   let rules: Rule[] = [];
   let currentTerm: Term | null = null;
-  let inputTerm: Term | null = null;
   let stepCount = 0;
   let justStepped = false;
   let animating = false;
@@ -78,7 +77,6 @@ export function initApp(): void {
   function setStepControls(enabled: boolean) {
     btnStep.disabled = !enabled;
     btnRun.disabled = !enabled;
-    btnReset.disabled = !enabled;
   }
 
   function renderCurrent() {
@@ -91,7 +89,6 @@ export function initApp(): void {
     try {
       const program = parse(sourceEl.value);
       rules = program.rules;
-      inputTerm = program.input;
       currentTerm = program.input;
       stepCount = 0;
       justStepped = false;
@@ -165,14 +162,4 @@ export function initApp(): void {
     }
   });
 
-  btnReset.addEventListener("click", () => {
-    if (!inputTerm) return;
-
-    currentTerm = inputTerm;
-    stepCount = 0;
-    justStepped = false;
-    renderCurrent();
-    setStepControls(true);
-    setStatus(`Reset — Step count: 0`, "success");
-  });
 }
