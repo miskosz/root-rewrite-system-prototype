@@ -1,6 +1,7 @@
 import { parse, ParseError } from "../core/parser";
 import { step } from "../core/interpreter";
 import { renderTree } from "./tree-render";
+import { animateStep } from "./tree-animate";
 import { highlight } from "./highlight";
 import type { Term, Rule } from "../core/types";
 
@@ -67,6 +68,7 @@ export function initApp(): void {
   let inputTerm: Term | null = null;
   let stepCount = 0;
   let justStepped = false;
+  let animating = false;
 
   function setStatus(msg: string, kind: "" | "error" | "success" = "") {
     statusBar.textContent = msg;
@@ -108,15 +110,23 @@ export function initApp(): void {
     }
   });
 
-  btnStep.addEventListener("click", () => {
-    if (!currentTerm) return;
+  btnStep.addEventListener("click", async () => {
+    if (!currentTerm || animating) return;
 
     const result = step(rules, currentTerm);
     if (result) {
+      animating = true;
+      setStepControls(false);
+
+      const oldTerm = currentTerm;
       currentTerm = result.term;
       stepCount++;
+
+      await animateStep(oldTerm, result.term, result.rule, result.substitution, treeContainer);
+
+      animating = false;
       justStepped = true;
-      renderCurrent();
+      setStepControls(true);
       setStatus(`Step ${stepCount}: rule ${result.ruleIndex + 1} matched`, "success");
     } else {
       justStepped = false;

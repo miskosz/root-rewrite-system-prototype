@@ -60,6 +60,8 @@ export function applySubstitution(pattern: TermVar, sub: Substitution): Term {
 export interface StepResult {
   term: Term;
   ruleIndex: number;
+  rule: Rule;
+  substitution: Substitution;
 }
 
 /**
@@ -73,6 +75,8 @@ export function step(rules: Rule[], term: Term): StepResult | null {
       return {
         term: applySubstitution(rules[i].right, sub),
         ruleIndex: i,
+        rule: rules[i],
+        substitution: sub,
       };
     }
   }

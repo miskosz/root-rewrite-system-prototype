@@ -1,17 +1,17 @@
 import type { Term } from "../core/types";
 
-const SVG_NS = "http://www.w3.org/2000/svg";
+export const SVG_NS = "http://www.w3.org/2000/svg";
 
 /** Layout constants */
-const NODE_RX = 6;
-const NODE_HEIGHT = 28;
-const NODE_PADDING_X = 14;
-const H_GAP = 16; // horizontal gap between sibling subtrees
-const V_GAP = 48; // vertical gap between levels
-const FONT_SIZE = 14;
+export const NODE_RX = 6;
+export const NODE_HEIGHT = 28;
+export const NODE_PADDING_X = 14;
+export const H_GAP = 16; // horizontal gap between sibling subtrees
+export const V_GAP = 48; // vertical gap between levels
+export const FONT_SIZE = 14;
 
-/** Internal layout node produced by the layout pass. */
-interface LayoutNode {
+/** Layout node produced by the layout pass. */
+export interface LayoutNode {
   term: Term;
   width: number; // total width of this subtree
   height: number; // total height of this subtree
@@ -22,12 +22,12 @@ interface LayoutNode {
 }
 
 /** Measure text width roughly (monospace-ish estimate). */
-function measureLabel(label: string): number {
+export function measureLabel(label: string): number {
   return label.length * (FONT_SIZE * 0.62) + NODE_PADDING_X * 2;
 }
 
 /** First pass: compute sizes bottom-up. */
-function layoutTree(term: Term): LayoutNode {
+export function layoutTree(term: Term): LayoutNode {
   const nodeWidth = measureLabel(term.typeName);
   const childLayouts = term.children.map(layoutTree);
 
@@ -45,7 +45,7 @@ function layoutTree(term: Term): LayoutNode {
 }
 
 /** Second pass: assign absolute (x, y) positions top-down. */
-function positionTree(node: LayoutNode, cx: number, top: number): void {
+export function positionTree(node: LayoutNode, cx: number, top: number): void {
   node.x = cx;
   node.y = top;
 
