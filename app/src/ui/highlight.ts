@@ -76,5 +76,10 @@ export function highlight(source: string): string {
     i++;
   }
 
-  return parts.join("");
+  // Textarea always shows a trailing line; pre collapses it. Add a newline so they match.
+  const result = parts.join("");
+  if (result.endsWith("\n") || result === "") {
+    return result + "\n";
+  }
+  return result;
 }

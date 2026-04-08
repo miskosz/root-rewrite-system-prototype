@@ -73,13 +73,16 @@ main {
   position: absolute;
   inset: 0;
   margin: 0;
+  border: none;
   padding: 12px;
   font-family: var(--mono);
   font-size: 14px;
   line-height: 1.5;
   tab-size: 4;
+  letter-spacing: normal;
+  word-spacing: normal;
   white-space: pre-wrap;
-  word-wrap: break-word;
+  overflow-wrap: break-word;
   overflow: hidden;
   pointer-events: none;
   color: var(--text);
@@ -91,6 +94,8 @@ main {
   font-size: inherit;
   line-height: inherit;
   tab-size: inherit;
+  letter-spacing: inherit;
+  word-spacing: inherit;
 }
 
 #source {
@@ -100,11 +105,16 @@ main {
   resize: none;
   border: none;
   outline: none;
+  margin: 0;
   padding: 12px;
   font-family: var(--mono);
   font-size: 14px;
   line-height: 1.5;
   tab-size: 4;
+  letter-spacing: normal;
+  word-spacing: normal;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
   color: transparent;
   caret-color: var(--text);
   background: transparent;

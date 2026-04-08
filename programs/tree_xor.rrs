@@ -1,0 +1,45 @@
+signature:
+    const E
+    const B0
+    const B1
+    type T:
+        T | B0 | B1
+        T | B0 | B1
+
+    type XorInput:
+        T | B0 | B1
+    type XorOutput:
+        B0 | B1
+
+    type Runtime:
+        cur: T | B0 | B1
+        stack: Stack | E
+    type Stack:
+        head: Xor_L | Xor_R
+        tail: Stack | E
+    type Xor_L:
+        T | B0 | B1
+    type Xor_R:
+        B0 | B1
+
+rules:
+    XorInput(tree) -> Runtime(tree, E)
+    Runtime(T(left, right), stack) -> Runtime(left, Stack(Xor_L(right), stack))
+    Runtime(x, Stack(Xor_L(right), tail)) -> Runtime(right, Stack(Xor_R(x), tail))
+    # Both L and R are reduced
+    Runtime(B0, Stack(Xor_R(B0), tail)) -> Runtime(B0, tail)
+    Runtime(B0, Stack(Xor_R(B1), tail)) -> Runtime(B1, tail)
+    Runtime(B1, Stack(Xor_R(B0), tail)) -> Runtime(B1, tail)
+    Runtime(B1, Stack(Xor_R(B1), tail)) -> Runtime(B0, tail)
+    # End
+    Runtime(x, E) -> XorOutput(x)
+input:
+    XorInput(
+        T(
+            T(
+                B0,
+                T(B1, B1)
+            ),
+            T(B0, B1)
+        )
+    )
