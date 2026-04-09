@@ -1,0 +1,70 @@
+signature:
+    const E
+    const B0
+    const B1
+    type T:
+        T | B0 | B1
+        T | B0 | B1
+
+    type XorInput:
+        T | B0 | B1
+    type XorOutput:
+        B0 | B1
+
+    type Runtime:
+        call_stack: CStack | E
+        value_stack: VStack | E
+    type VStack:
+        head: T | B0 | B1
+        tail: VStack | E
+    type CStack:
+        head: TreeXor | TwoValueXor
+        tail: CStack | E
+
+    const TreeXor
+    const TwoValueXor
+    type Push:
+        T | B0 | B1
+
+rules:
+    XorInput(tree) -> Runtime(CStack(TreeXor, E), VStack(tree, E))
+    Runtime(E, VStack(value, vtail)) -> XorOutput(value)
+
+    # TreeXor
+    Runtime(CStack(TreeXor, ctail), VStack(T(left, right), vtail))
+        -> Runtime(
+                CStack(Push(right),
+                CStack(TreeXor,
+                CStack(Push(left),
+                CStack(TreeXor,
+                CStack(TwoValueXor,
+            ctail))))),
+            vtail
+        )
+    Runtime(CStack(TreeXor, ctail), vstack) -> Runtime(ctail, vstack)
+    
+    # TwoValueXor
+    Runtime(CStack(TwoValueXor, ctail), VStack(B0, VStack(B0, vtail)))
+        -> Runtime(ctail, VStack(B0, vtail))
+    Runtime(CStack(TwoValueXor, ctail), VStack(B0, VStack(B1, vtail)))
+        -> Runtime(ctail, VStack(B1, vtail))
+    Runtime(CStack(TwoValueXor, ctail), VStack(B1, VStack(B0, vtail)))
+        -> Runtime(ctail, VStack(B1, vtail))
+    Runtime(CStack(TwoValueXor, ctail), VStack(B1, VStack(B1, vtail)))
+        -> Runtime(ctail, VStack(B0, vtail))
+
+    # Push
+    Runtime(CStack(Push(value), ctail), vstack)
+        -> Runtime(ctail, VStack(value, vstack))
+
+
+input:
+    XorInput(
+        T(
+            T(
+                B0,
+                T(B1, B1)
+            ),
+            T(B0, B1)
+        )
+    )
