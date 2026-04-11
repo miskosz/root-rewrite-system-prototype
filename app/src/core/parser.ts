@@ -374,11 +374,32 @@ function validateTerm(sig: Signature, term: Term): void {
 }
 
 function validateRule(sig: Signature, rule: Rule, index: number): void {
-  const leftVars = new Set<string>();
-  const rightVars = new Set<string>();
+  const leftVarCounts = new Map<string, number>();
+  const rightVarCounts = new Map<string, number>();
 
-  collectVars(rule.left, leftVars);
-  collectVars(rule.right, rightVars);
+  countVars(rule.left, leftVarCounts);
+  countVars(rule.right, rightVarCounts);
+
+  // Check linearity: each variable appears at most once on each side
+  for (const [v, count] of leftVarCounts) {
+    if (count > 1) {
+      throw new ParseError(
+        `Rule ${index + 1}: variable '${v}' appears ${count} times on left side (must be linear)`,
+        0, 0,
+      );
+    }
+  }
+  for (const [v, count] of rightVarCounts) {
+    if (count > 1) {
+      throw new ParseError(
+        `Rule ${index + 1}: variable '${v}' appears ${count} times on right side (must be linear)`,
+        0, 0,
+      );
+    }
+  }
+
+  const leftVars = new Set(leftVarCounts.keys());
+  const rightVars = new Set(rightVarCounts.keys());
 
   // Check: every variable in right must occur in left
   for (const v of rightVars) {
@@ -400,12 +421,12 @@ function validateRule(sig: Signature, rule: Rule, index: number): void {
   validateTermVar(sig, rule.right, `Rule ${index + 1} right`);
 }
 
-function collectVars(tv: TermVar, vars: Set<string>): void {
+function countVars(tv: TermVar, counts: Map<string, number>): void {
   if (tv.kind === "variable") {
-    vars.add(tv.name);
+    counts.set(tv.name, (counts.get(tv.name) ?? 0) + 1);
   } else {
     for (const child of tv.children) {
-      collectVars(child, vars);
+      countVars(child, counts);
     }
   }
 }
