@@ -155,6 +155,11 @@ main {
   font-style: italic;
 }
 
+.hl-alias {
+  color: #d6336c;
+  font-style: italic;
+}
+
 .hl-comment {
   color: var(--text-muted);
   font-style: italic;

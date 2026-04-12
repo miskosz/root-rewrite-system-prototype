@@ -3,12 +3,13 @@ import { tokenize, ParseError, type Token, type TokenKind } from "./tokenizer";
 import { validate } from "./validator";
 
 // ---------------------------------------------------------------------------
-// Parser (RRS1)
+// Parser (RRS2)
 // ---------------------------------------------------------------------------
 
 class Parser {
   private pos = 0;
   private tokens: Token[];
+  private aliasNames: Set<string> = new Set();
 
   constructor(tokens: Token[]) {
     this.tokens = tokens;
@@ -91,64 +92,126 @@ class Parser {
   // -- signature ------------------------------------------------------------
 
   private parseSignature(): Signature {
-    const sig: Signature = new Map();
+    // Pass 1: collect raw declarations
+    const consts = new Set<string>();
+    const typeDecls = new Map<string, { childTypesRaw: string[][] }>();
+    const aliasDecls = new Map<string, string[]>();
+
+    const checkDup = (name: string) => {
+      if (consts.has(name) || typeDecls.has(name) || aliasDecls.has(name)) {
+        this.err(`Duplicate type '${name}'`);
+      }
+    };
 
     while (this.pos < this.tokens.length) {
       const t = this.peek()!;
-      // Section boundary: another top-level keyword
       if (t.kind === "KW" && (t.value === "rules" || t.value === "input" || t.value === "signature")) break;
 
       if (t.kind === "KW" && t.value === "const") {
         this.advance();
         const name = this.expect("IDENT").value;
-        if (sig.has(name)) this.err(`Duplicate type '${name}'`);
-        sig.set(name, { arity: 0, childTypes: [] });
+        checkDup(name);
+        consts.add(name);
       } else if (t.kind === "KW" && t.value === "type") {
         this.advance();
         const name = this.expect("IDENT").value;
-        if (sig.has(name)) this.err(`Duplicate type '${name}'`);
+        checkDup(name);
         this.expect("COLON");
-        const childTypes = this.parseChildTypes();
-        sig.set(name, { arity: childTypes.length, childTypes });
+        const childTypesRaw = this.parseChildTypesRaw();
+        typeDecls.set(name, { childTypesRaw });
+      } else if (t.kind === "KW" && t.value === "alias") {
+        this.advance();
+        const name = this.expect("IDENT").value;
+        checkDup(name);
+        this.expect("COLON");
+        aliasDecls.set(name, this.parseTypeListRaw());
       } else {
-        this.err(`Expected 'const' or 'type', got '${t.value}'`, t.line, t.col);
+        this.err(`Expected 'const', 'type', or 'alias', got '${t.value}'`, t.line, t.col);
       }
+    }
+
+    this.aliasNames = new Set(aliasDecls.keys());
+
+    // Pass 2: resolve aliases
+    const resolvedAliases = new Map<string, Set<string>>();
+    const resolveAlias = (name: string, stack: Set<string>): Set<string> => {
+      const cached = resolvedAliases.get(name);
+      if (cached) return cached;
+      if (stack.has(name)) throw new ParseError(`Alias cycle involving '${name}'`, 0, 0);
+      stack.add(name);
+      const members = aliasDecls.get(name)!;
+      const out = new Set<string>();
+      for (const m of members) {
+        if (consts.has(m) || typeDecls.has(m)) {
+          out.add(m);
+        } else if (aliasDecls.has(m)) {
+          for (const x of resolveAlias(m, stack)) out.add(x);
+        } else {
+          throw new ParseError(`Alias '${name}' references unknown name '${m}'`, 0, 0);
+        }
+      }
+      stack.delete(name);
+      resolvedAliases.set(name, out);
+      return out;
+    };
+
+    for (const name of aliasDecls.keys()) resolveAlias(name, new Set());
+
+    // Build final signature
+    const sig: Signature = new Map();
+    for (const name of consts) {
+      sig.set(name, { arity: 0, childTypes: [] });
+    }
+    for (const [name, decl] of typeDecls) {
+      const childTypes: TypeSet[] = [];
+      for (const slot of decl.childTypesRaw) {
+        const set: TypeSet = new Set();
+        for (const m of slot) {
+          if (consts.has(m) || typeDecls.has(m)) {
+            set.add(m);
+          } else if (aliasDecls.has(m)) {
+            for (const x of resolvedAliases.get(m)!) set.add(x);
+          } else {
+            throw new ParseError(`Type '${name}' references unknown name '${m}'`, 0, 0);
+          }
+        }
+        childTypes.push(set);
+      }
+      sig.set(name, { arity: childTypes.length, childTypes });
     }
 
     return sig;
   }
 
-  /** Parse one or more child type lines, each being `Name | Name | ...` optionally prefixed with `label:`. */
-  private parseChildTypes(): TypeSet[] {
-    const result: TypeSet[] = [];
+  /** Parse one or more child type lines as raw string lists. */
+  private parseChildTypesRaw(): string[][] {
+    const result: string[][] = [];
 
     while (this.pos < this.tokens.length) {
       const t = this.peek()!;
-      // Not an IDENT → end of child types
       if (t.kind !== "IDENT") break;
 
-      // Lookahead: if IDENT COLON, it's a labeled child → skip label
       if (this.pos + 1 < this.tokens.length && this.tokens[this.pos + 1].kind === "COLON") {
-        this.advance(); // skip label
-        this.advance(); // skip colon
+        this.advance();
+        this.advance();
       }
 
-      result.push(this.parseTypeSet());
+      result.push(this.parseTypeListRaw());
     }
 
     if (result.length === 0) this.err("Expected at least one child type specification");
     return result;
   }
 
-  /** Parse `Name | Name | ...` */
-  private parseTypeSet(): TypeSet {
-    const set: TypeSet = new Set();
-    set.add(this.expect("IDENT").value);
+  /** Parse `Name | Name | ...` as a raw list. */
+  private parseTypeListRaw(): string[] {
+    const list: string[] = [];
+    list.push(this.expect("IDENT").value);
     while (this.at("PIPE")) {
       this.advance();
-      set.add(this.expect("IDENT").value);
+      list.push(this.expect("IDENT").value);
     }
-    return set;
+    return list;
   }
 
   // -- rules ----------------------------------------------------------------
@@ -173,7 +236,11 @@ class Parser {
 
   /** Parse a ground term (no variables allowed). */
   private parseTerm(): Term {
-    const name = this.expect("IDENT").value;
+    const tok = this.expect("IDENT");
+    const name = tok.value;
+    if (this.aliasNames.has(name)) {
+      this.err(`Alias '${name}' cannot be used as a term constructor`, tok.line, tok.col);
+    }
     const children: Term[] = [];
 
     if (this.at("LPAREN")) {
@@ -197,6 +264,10 @@ class Parser {
 
     if (isVariable(ident.value)) {
       return { kind: "variable", name: ident.value };
+    }
+
+    if (this.aliasNames.has(ident.value)) {
+      this.err(`Alias '${ident.value}' cannot be used as a term constructor`, ident.line, ident.col);
     }
 
     const children: TermVar[] = [];

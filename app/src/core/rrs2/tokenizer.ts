@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Tokenizer (RRS1)
+// Tokenizer (RRS2)
 // ---------------------------------------------------------------------------
 
 export type TokenKind =
@@ -10,9 +10,9 @@ export type TokenKind =
   | "LPAREN"   // (
   | "RPAREN"   // )
   | "COMMA"    // ,
-  | "KW";      // signature, rules, input, const, type
+  | "KW";      // signature, rules, input, const, type, alias
 
-export const KEYWORDS = new Set(["signature", "rules", "input", "const", "type"]);
+export const KEYWORDS = new Set(["signature", "rules", "input", "const", "type", "alias"]);
 
 export interface Token {
   kind: TokenKind;

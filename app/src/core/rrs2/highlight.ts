@@ -4,7 +4,16 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+function collectAliasNames(source: string): Set<string> {
+  const names = new Set<string>();
+  const re = /\balias\s+([A-Za-z_][A-Za-z0-9_]*)\s*:/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(source)) !== null) names.add(m[1]);
+  return names;
+}
+
 export function highlight(source: string): string {
+  const aliasNames = collectAliasNames(source);
   const parts: string[] = [];
   let i = 0;
 
@@ -62,6 +71,8 @@ export function highlight(source: string): string {
       const word = source.slice(i, end);
       if (KEYWORDS.has(word)) {
         parts.push(`<span class="hl-keyword">${word}</span>`);
+      } else if (aliasNames.has(word)) {
+        parts.push(`<span class="hl-alias">${escapeHtml(word)}</span>`);
       } else if (/^[A-Z]/.test(word)) {
         parts.push(`<span class="hl-constructor">${escapeHtml(word)}</span>`);
       } else {
