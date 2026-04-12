@@ -1,4 +1,4 @@
-const KEYWORDS = new Set(["signature", "rules", "input", "const", "type"]);
+import { KEYWORDS } from "./tokenizer";
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");

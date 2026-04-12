@@ -9,27 +9,16 @@
     <div id="app">
       <header>
         <h1>Root Rewrite System</h1>
+        <fieldset id="lang-select">
+          <label><input type="radio" name="lang" value="rrs1" checked> RRS1</label>
+          <label><input type="radio" name="lang" value="rrs2"> RRS2</label>
+        </fieldset>
       </header>
       <main>
         <div id="editor-pane">
           <div id="editor-wrapper">
             <pre id="highlight-layer" aria-hidden="true"><code id="highlight-code"></code></pre>
-            <textarea id="source" spellcheck="false">signature:
-    const Zero
-    type Succ:
-        Succ | Zero
-
-    type SumInput:
-        Succ | Zero
-        Succ | Zero
-    type SumOutput:
-        Succ | Zero
-
-rules:
-    SumInput(Succ(ltail), right) -> SumInput(ltail, Succ(right))
-    SumInput(Zero, right) -> SumOutput(right)
-input:
-    SumInput(Succ(Succ(Succ(Zero))), Succ(Succ(Zero)))</textarea>
+            <textarea id="source" spellcheck="false"></textarea>
           </div>
           <div id="controls">
             <button id="btn-parse">Load</button>

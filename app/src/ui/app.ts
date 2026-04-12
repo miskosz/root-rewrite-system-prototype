@@ -1,8 +1,8 @@
-import { parse, ParseError } from "../core/parser";
+import { LANGUAGES, getLanguage } from "../core/languages";
+import { ParseError, type Language } from "../core/language";
 import { step } from "../core/interpreter";
 import { renderTree } from "./tree-render";
 import { animateStep } from "./tree-animate";
-import { highlight } from "./highlight";
 import type { Term, Rule } from "../core/types";
 
 export function initApp(): void {
@@ -36,11 +36,14 @@ export function initApp(): void {
 
   const highlightCode = document.getElementById("highlight-code")!;
 
+  let currentLanguage: Language = LANGUAGES[0];
+
   function updateHighlight() {
-    highlightCode.innerHTML = highlight(sourceEl.value);
+    highlightCode.innerHTML = currentLanguage.highlight(sourceEl.value);
   }
 
-  // Initial highlight
+  // Initialize editor with the default language's default program
+  sourceEl.value = currentLanguage.defaultProgram;
   updateHighlight();
 
   sourceEl.addEventListener("input", updateHighlight);
@@ -85,9 +88,33 @@ export function initApp(): void {
     }
   }
 
+  // Language selector
+  const langRadios = document.querySelectorAll<HTMLInputElement>('input[name="lang"]');
+  langRadios.forEach((radio) => {
+    radio.addEventListener("change", () => {
+      if (!radio.checked) return;
+      currentLanguage = getLanguage(radio.value);
+
+      // Reset interpreter state
+      rules = [];
+      currentTerm = null;
+      stepCount = 0;
+      justStepped = false;
+      animating = false;
+
+      treeContainer.innerHTML = "";
+      setStepControls(false);
+
+      sourceEl.value = currentLanguage.defaultProgram;
+      updateHighlight();
+
+      setStatus(`Switched to ${currentLanguage.label}`);
+    });
+  });
+
   btnParse.addEventListener("click", () => {
     try {
-      const program = parse(sourceEl.value);
+      const program = currentLanguage.parse(sourceEl.value);
       rules = program.rules;
       currentTerm = program.input;
       stepCount = 0;
