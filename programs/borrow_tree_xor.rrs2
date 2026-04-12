@@ -1,0 +1,93 @@
+signature:
+    const B0
+    const B1
+    alias Bit: B0 | B1
+
+    type T:
+        Tree
+        Tree
+    alias Tree: T | Bit
+
+    type BorrowXorInput:
+        Tree
+    type BorrowXorOutput:
+        xor: Bit
+        inp: Tree
+
+    const E
+    type Cons<'t>:
+        head: 't
+        tail: Stack<'t>
+    alias Stack<'t>: Cons<'t> | E
+
+    type Runtime:
+        call_stack: Stack<CallType>
+        value_stack: Stack<ValueType>
+    alias CallType: TreeXor | TwoValueXor | Push
+    alias ValueType: Tree | XorOut
+
+    const TreeXor
+    const TwoValueXor
+    type XorOut:
+        xor: Bit
+        inp: Tree
+
+    type Push:
+        ValueType
+
+rules:
+    BorrowXorInput(tree) -> Runtime(Cons(TreeXor, E), Cons(tree, E))
+
+    # TreeXor
+    Runtime(Cons(TreeXor, ctail), Cons(T(left, right), vtail))
+        -> Runtime(
+                Cons(Push(right),
+                Cons(TreeXor,
+                Cons(Push(left),
+                Cons(TreeXor,
+                Cons(TwoValueXor,
+            ctail))))),
+            vtail
+        )
+    Runtime(Cons(TreeXor, ctail), Cons(B0, vtail))
+        -> Runtime(ctail, Cons(XorOut(B0, B0), vtail))
+    Runtime(Cons(TreeXor, ctail), Cons(B1, vtail))
+        -> Runtime(ctail, Cons(XorOut(B1, B1), vtail))
+    
+    # TwoValueXor
+    Runtime(
+        Cons(TwoValueXor, ctail),
+        Cons(XorOut(B0, left), Cons(XorOut(B0, right), vtail))
+    )
+        -> Runtime(ctail, Cons(XorOut(B0, T(left, right)), vtail))
+    Runtime(
+        Cons(TwoValueXor, ctail),
+        Cons(XorOut(B0, left), Cons(XorOut(B1, right), vtail))
+    )
+        -> Runtime(ctail, Cons(XorOut(B1, T(left, right)), vtail))
+    Runtime(
+        Cons(TwoValueXor, ctail),
+        Cons(XorOut(B1, left), Cons(XorOut(B0, right), vtail))
+    )
+        -> Runtime(ctail, Cons(XorOut(B1, T(left, right)), vtail))
+    Runtime(
+        Cons(TwoValueXor, ctail),
+        Cons(XorOut(B1, left), Cons(XorOut(B1, right), vtail))
+    )
+        -> Runtime(ctail, Cons(XorOut(B0, T(left, right)), vtail))
+
+    # Push
+    Runtime(Cons(Push(val), ctail), vstack)
+        -> Runtime(ctail, Cons(val, vstack))
+
+    # Out
+    Runtime(E, Cons(XorOut(val, inp), vtail))
+        -> BorrowXorOutput(val, inp)
+
+input:
+    BorrowXorInput(
+        T(
+            B0,
+            T(B1, B1)
+        )
+    )

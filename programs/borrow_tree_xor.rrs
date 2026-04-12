@@ -16,10 +16,10 @@ signature:
         call_stack: CStack | E
         value_stack: VStack | E
     type VStack:
-        head: T | B0 | B1
+        head: T | B0 | B1 | XorOut
         tail: VStack | E
     type CStack:
-        head: TreeXor | TwoValueXor
+        head: TreeXor | TwoValueXor | Push
         tail: CStack | E
 
     const TreeXor
