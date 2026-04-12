@@ -2,7 +2,7 @@ import { LANGUAGES, getLanguage } from "../core/languages";
 import { ParseError, type Language } from "../core/language";
 import { step } from "../core/interpreter";
 import { renderTree } from "./tree-render";
-import { animateStep } from "./tree-animate";
+import { animateStep, highlightMatch } from "./tree-animate";
 import type { Term, Rule } from "../core/types";
 
 export function initApp(): void {
@@ -10,6 +10,7 @@ export function initApp(): void {
   const treeContainer = document.getElementById("tree-container")!;
   const statusBar = document.getElementById("status-bar")!;
   const btnParse = document.getElementById("btn-parse") as HTMLButtonElement;
+  const btnMatch = document.getElementById("btn-match") as HTMLButtonElement;
   const btnStep = document.getElementById("btn-step") as HTMLButtonElement;
   const btnRun = document.getElementById("btn-run") as HTMLButtonElement;
 
@@ -78,6 +79,7 @@ export function initApp(): void {
   }
 
   function setStepControls(enabled: boolean) {
+    btnMatch.disabled = !enabled;
     btnStep.disabled = !enabled;
     btnRun.disabled = !enabled;
   }
@@ -131,6 +133,23 @@ export function initApp(): void {
       } else {
         setStatus(`Error: ${(e as Error).message}`, "error");
       }
+    }
+  });
+
+  btnMatch.addEventListener("click", () => {
+    if (!currentTerm || animating) return;
+
+    const result = step(rules, currentTerm);
+    if (result) {
+      highlightMatch(currentTerm, result.rule, treeContainer);
+      setStatus(`Rule ${result.ruleIndex + 1} matches`, "success");
+    } else {
+      justStepped = false;
+      renderCurrent();
+      setStatus(`Normal form — no rule matches`, "success");
+      btnMatch.disabled = true;
+      btnStep.disabled = true;
+      btnRun.disabled = true;
     }
   });
 

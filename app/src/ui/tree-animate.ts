@@ -171,6 +171,59 @@ function collectAnnotatedEdges(node: AnnotatedNode): Array<{ parent: LayoutNode;
   return edges;
 }
 
+// ── Match highlight ─────────────────────────────────────────────────────
+
+/** Render the current term with pattern-match coloring, without advancing state. */
+export function highlightMatch(
+  term: Term,
+  rule: Rule,
+  container: HTMLElement,
+): void {
+  const padding = 20;
+  const layout = layoutTree(term);
+  const containerWidth = container.clientWidth;
+  const rootCx = Math.max(containerWidth / 2, layout.width / 2 + padding);
+  positionTree(layout, rootCx, padding);
+
+  const annotated = annotateTree(rule.left, layout);
+  const varLayouts = collectVarLayouts(annotated);
+
+  const svgWidth = Math.max(containerWidth, rootCx + layout.width / 2 + padding);
+  const svgHeight = layout.height + padding * 2;
+
+  container.innerHTML = "";
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("width", String(svgWidth));
+  svg.setAttribute("height", String(svgHeight));
+  svg.setAttribute("viewBox", `0 0 ${svgWidth} ${svgHeight}`);
+  svg.style.display = "block";
+  container.appendChild(svg);
+
+  const rootG = document.createElementNS(SVG_NS, "g") as SVGGElement;
+  svg.appendChild(rootG);
+
+  // Edges between rule-structure nodes and their children
+  for (const e of collectAnnotatedEdges(annotated)) {
+    rootG.appendChild(createEdge(e.parent.x, e.parent.y + NODE_HEIGHT, e.child.layout.x, e.child.layout.y));
+  }
+
+  // Rule-structure nodes in yellow
+  for (const rn of collectRuleNodes(annotated)) {
+    const g = document.createElementNS(SVG_NS, "g");
+    g.appendChild(createNodeRect(rn.x, rn.y, rn.nodeWidth, RULE_FILL, RULE_STROKE));
+    g.appendChild(createNodeText(rn.x, rn.y, rn.term.typeName));
+    rootG.appendChild(g);
+  }
+
+  // Variable subtrees in palette colors
+  let colorIdx = 0;
+  for (const varLayout of varLayouts.values()) {
+    const c = VAR_PALETTE[colorIdx % VAR_PALETTE.length];
+    rootG.appendChild(renderSubtreeGroup(varLayout, c.fill, c.stroke));
+    colorIdx++;
+  }
+}
+
 // ── Main animation ──────────────────────────────────────────────────────
 
 function delay(ms: number): Promise<void> {
