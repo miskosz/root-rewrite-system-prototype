@@ -1,0 +1,89 @@
+signature:
+    const E
+    const B0
+    const B1
+    type T:
+        T | B0 | B1
+        T | B0 | B1
+
+    type BorrowXorInput:
+        T | B0 | B1
+    type BorrowXorOutput:
+        xor: B0 | B1
+        inp: T | B0 | B1
+
+    type Runtime:
+        call_stack: CStack | E
+        value_stack: VStack | E
+    type VStack:
+        head: T | B0 | B1
+        tail: VStack | E
+    type CStack:
+        head: TreeXor | TwoValueXor
+        tail: CStack | E
+
+    const TreeXor
+    const TwoValueXor
+    type XorOut:
+        xor: B0 | B1
+        inp: T | B0 | B1
+
+    type Push:
+        T | B0 | B1 | XorOut
+
+rules:
+    BorrowXorInput(tree) -> Runtime(CStack(TreeXor, E), VStack(tree, E))
+
+    # TreeXor
+    Runtime(CStack(TreeXor, ctail), VStack(T(left, right), vtail))
+        -> Runtime(
+                CStack(Push(right),
+                CStack(TreeXor,
+                CStack(Push(left),
+                CStack(TreeXor,
+                CStack(TwoValueXor,
+            ctail))))),
+            vtail
+        )
+    Runtime(CStack(TreeXor, ctail), VStack(B0, vtail))
+        -> Runtime(ctail, VStack(XorOut(B0, B0), vtail))
+    Runtime(CStack(TreeXor, ctail), VStack(B1, vtail))
+        -> Runtime(ctail, VStack(XorOut(B1, B1), vtail))
+    
+    # TwoValueXor
+    Runtime(
+        CStack(TwoValueXor, ctail),
+        VStack(XorOut(B0, left), VStack(XorOut(B0, right), vtail))
+    )
+        -> Runtime(ctail, VStack(XorOut(B0, T(left, right)), vtail))
+    Runtime(
+        CStack(TwoValueXor, ctail),
+        VStack(XorOut(B0, left), VStack(XorOut(B1, right), vtail))
+    )
+        -> Runtime(ctail, VStack(XorOut(B1, T(left, right)), vtail))
+    Runtime(
+        CStack(TwoValueXor, ctail),
+        VStack(XorOut(B1, left), VStack(XorOut(B0, right), vtail))
+    )
+        -> Runtime(ctail, VStack(XorOut(B1, T(left, right)), vtail))
+    Runtime(
+        CStack(TwoValueXor, ctail),
+        VStack(XorOut(B1, left), VStack(XorOut(B1, right), vtail))
+    )
+        -> Runtime(ctail, VStack(XorOut(B0, T(left, right)), vtail))
+
+    # Push
+    Runtime(CStack(Push(val), ctail), vstack)
+        -> Runtime(ctail, VStack(val, vstack))
+
+    # Out
+    Runtime(E, VStack(XorOut(val, inp), vtail))
+        -> BorrowXorOutput(val, inp)
+
+input:
+    BorrowXorInput(
+        T(
+            B0,
+            T(B1, B1)
+        )
+    )
