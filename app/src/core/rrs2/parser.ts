@@ -1,9 +1,20 @@
-import type { Signature, TypeSet, Term, TermVar, Rule, Program } from "../types";
+import type { Program } from "../types";
 import { tokenize, ParseError, type Token, type TokenKind } from "./tokenizer";
-import { validate } from "./validator";
+import { validateGeneric, validateMonomorphic } from "./validator";
+import { monomorphize } from "./monomorphize";
+import type {
+  GenericProgram,
+  GenericSignature,
+  GenericRule,
+  PatternTerm,
+  TypeRef,
+} from "./generic-ir";
 
 // ---------------------------------------------------------------------------
 // Parser (RRS2)
+//
+// Produces a GenericProgram (signature/rules/input may contain type vars).
+// Monomorphization erases generics into a concrete Program.
 // ---------------------------------------------------------------------------
 
 class Parser {
@@ -53,11 +64,10 @@ class Parser {
 
   // -- grammar --------------------------------------------------------------
 
-  /** Top-level: signature, rules, input sections in any order. */
-  parse(): Program {
-    let signature: Signature | undefined;
-    let rules: Rule[] | undefined;
-    let input: Term | undefined;
+  parse(): GenericProgram {
+    let signature: GenericSignature | undefined;
+    let rules: GenericRule[] | undefined;
+    let input: PatternTerm | undefined;
 
     while (this.pos < this.tokens.length) {
       const t = this.peek()!;
@@ -74,7 +84,7 @@ class Parser {
         if (input) this.err("Duplicate 'input' section", t.line, t.col);
         this.advance();
         this.expect("COLON");
-        input = this.parseTerm();
+        input = this.parsePatternTerm();
       } else {
         this.err(`Unexpected token '${t.value}'`, t.line, t.col);
       }
@@ -84,23 +94,17 @@ class Parser {
     if (!rules) this.err("Missing 'rules' section");
     if (!input) this.err("Missing 'input' section");
 
-    validate(signature, rules, input);
-
     return { signature, rules, input };
   }
 
   // -- signature ------------------------------------------------------------
 
-  private parseSignature(): Signature {
-    // Pass 1: collect raw declarations
-    const consts = new Set<string>();
-    const typeDecls = new Map<string, { childTypesRaw: string[][] }>();
-    const aliasDecls = new Map<string, string[]>();
+  private parseSignature(): GenericSignature {
+    const sig: GenericSignature = new Map();
+    const aliasNames = new Set<string>();
 
     const checkDup = (name: string) => {
-      if (consts.has(name) || typeDecls.has(name) || aliasDecls.has(name)) {
-        this.err(`Duplicate type '${name}'`);
-      }
+      if (sig.has(name)) this.err(`Duplicate type '${name}'`);
     };
 
     while (this.pos < this.tokens.length) {
@@ -111,121 +115,123 @@ class Parser {
         this.advance();
         const name = this.expect("IDENT").value;
         checkDup(name);
-        consts.add(name);
+        sig.set(name, { params: [], childTypes: [], isAlias: false, isConst: true });
       } else if (t.kind === "KW" && t.value === "type") {
         this.advance();
         const name = this.expect("IDENT").value;
         checkDup(name);
+        const params = this.parseTypeParams();
         this.expect("COLON");
-        const childTypesRaw = this.parseChildTypesRaw();
-        typeDecls.set(name, { childTypesRaw });
+        const childTypes = this.parseChildTypeRefs();
+        sig.set(name, { params, childTypes, isAlias: false, isConst: false });
       } else if (t.kind === "KW" && t.value === "alias") {
         this.advance();
         const name = this.expect("IDENT").value;
         checkDup(name);
+        const params = this.parseTypeParams();
         this.expect("COLON");
-        aliasDecls.set(name, this.parseTypeListRaw());
+        const row = this.parseTypeRefList();
+        sig.set(name, { params, childTypes: [row], isAlias: true, isConst: false });
+        aliasNames.add(name);
       } else {
         this.err(`Expected 'const', 'type', or 'alias', got '${t.value}'`, t.line, t.col);
       }
     }
 
-    this.aliasNames = new Set(aliasDecls.keys());
-
-    // Pass 2: resolve aliases
-    const resolvedAliases = new Map<string, Set<string>>();
-    const resolveAlias = (name: string, stack: Set<string>): Set<string> => {
-      const cached = resolvedAliases.get(name);
-      if (cached) return cached;
-      if (stack.has(name)) throw new ParseError(`Alias cycle involving '${name}'`, 0, 0);
-      stack.add(name);
-      const members = aliasDecls.get(name)!;
-      const out = new Set<string>();
-      for (const m of members) {
-        if (consts.has(m) || typeDecls.has(m)) {
-          out.add(m);
-        } else if (aliasDecls.has(m)) {
-          for (const x of resolveAlias(m, stack)) out.add(x);
-        } else {
-          throw new ParseError(`Alias '${name}' references unknown name '${m}'`, 0, 0);
-        }
-      }
-      stack.delete(name);
-      resolvedAliases.set(name, out);
-      return out;
-    };
-
-    for (const name of aliasDecls.keys()) resolveAlias(name, new Set());
-
-    // Build final signature
-    const sig: Signature = new Map();
-    for (const name of consts) {
-      sig.set(name, { arity: 0, childTypes: [] });
-    }
-    for (const [name, decl] of typeDecls) {
-      const childTypes: TypeSet[] = [];
-      for (const slot of decl.childTypesRaw) {
-        const set: TypeSet = new Set();
-        for (const m of slot) {
-          if (consts.has(m) || typeDecls.has(m)) {
-            set.add(m);
-          } else if (aliasDecls.has(m)) {
-            for (const x of resolvedAliases.get(m)!) set.add(x);
-          } else {
-            throw new ParseError(`Type '${name}' references unknown name '${m}'`, 0, 0);
-          }
-        }
-        childTypes.push(set);
-      }
-      sig.set(name, { arity: childTypes.length, childTypes });
-    }
-
+    this.aliasNames = aliasNames;
     return sig;
   }
 
-  /** Parse one or more child type lines as raw string lists. */
-  private parseChildTypesRaw(): string[][] {
-    const result: string[][] = [];
+  /** Parse `< 'a, 'b, ... >` if present, else return []. */
+  private parseTypeParams(): string[] {
+    if (!this.at("LANGLE")) return [];
+    this.advance();
+    const params: string[] = [];
+    if (!this.at("RANGLE")) {
+      params.push(this.expect("TYPEVAR").value);
+      while (this.at("COMMA")) {
+        this.advance();
+        params.push(this.expect("TYPEVAR").value);
+      }
+    }
+    this.expect("RANGLE");
+    return params;
+  }
+
+  /** Parse one type reference: TYPEVAR | IDENT (`< args >`)? */
+  private parseTypeRef(): TypeRef {
+    const t = this.peek();
+    if (!t) this.err("Expected type reference");
+    if (t.kind === "TYPEVAR") {
+      this.advance();
+      return { kind: "var", name: t.value };
+    }
+    if (t.kind === "IDENT") {
+      this.advance();
+      const args: TypeRef[] = [];
+      if (this.at("LANGLE")) {
+        this.advance();
+        if (!this.at("RANGLE")) {
+          args.push(this.parseTypeRef());
+          while (this.at("COMMA")) {
+            this.advance();
+            args.push(this.parseTypeRef());
+          }
+        }
+        this.expect("RANGLE");
+      }
+      return { kind: "concrete", name: t.value, args };
+    }
+    this.err(`Expected type reference, got '${t.value}'`, t.line, t.col);
+  }
+
+  /** Parse `TypeRef ( PIPE TypeRef )*`. */
+  private parseTypeRefList(): TypeRef[] {
+    const list: TypeRef[] = [this.parseTypeRef()];
+    while (this.at("PIPE")) {
+      this.advance();
+      list.push(this.parseTypeRef());
+    }
+    return list;
+  }
+
+  /** Parse one or more child type lines, each a pipe-separated set. */
+  private parseChildTypeRefs(): TypeRef[][] {
+    const result: TypeRef[][] = [];
 
     while (this.pos < this.tokens.length) {
       const t = this.peek()!;
-      if (t.kind !== "IDENT") break;
+      if (t.kind !== "IDENT" && t.kind !== "TYPEVAR") break;
 
-      if (this.pos + 1 < this.tokens.length && this.tokens[this.pos + 1].kind === "COLON") {
+      // Optional label "name:"
+      if (
+        t.kind === "IDENT" &&
+        this.pos + 1 < this.tokens.length &&
+        this.tokens[this.pos + 1].kind === "COLON"
+      ) {
         this.advance();
         this.advance();
       }
 
-      result.push(this.parseTypeListRaw());
+      result.push(this.parseTypeRefList());
     }
 
     if (result.length === 0) this.err("Expected at least one child type specification");
     return result;
   }
 
-  /** Parse `Name | Name | ...` as a raw list. */
-  private parseTypeListRaw(): string[] {
-    const list: string[] = [];
-    list.push(this.expect("IDENT").value);
-    while (this.at("PIPE")) {
-      this.advance();
-      list.push(this.expect("IDENT").value);
-    }
-    return list;
-  }
-
   // -- rules ----------------------------------------------------------------
 
-  private parseRules(): Rule[] {
-    const rules: Rule[] = [];
+  private parseRules(): GenericRule[] {
+    const rules: GenericRule[] = [];
 
     while (this.pos < this.tokens.length) {
       const t = this.peek()!;
       if (t.kind === "KW" && (t.value === "signature" || t.value === "input" || t.value === "rules")) break;
 
-      const left = this.parseTermVar();
+      const left = this.parsePatternTerm();
       this.expect("ARROW");
-      const right = this.parseTermVar();
+      const right = this.parsePatternTerm();
       rules.push({ left, right });
     }
 
@@ -234,32 +240,8 @@ class Parser {
 
   // -- terms ----------------------------------------------------------------
 
-  /** Parse a ground term (no variables allowed). */
-  private parseTerm(): Term {
-    const tok = this.expect("IDENT");
-    const name = tok.value;
-    if (this.aliasNames.has(name)) {
-      this.err(`Alias '${name}' cannot be used as a term constructor`, tok.line, tok.col);
-    }
-    const children: Term[] = [];
-
-    if (this.at("LPAREN")) {
-      this.advance();
-      if (!this.at("RPAREN")) {
-        children.push(this.parseTerm());
-        while (this.at("COMMA")) {
-          this.advance();
-          children.push(this.parseTerm());
-        }
-      }
-      this.expect("RPAREN");
-    }
-
-    return { typeName: name, children };
-  }
-
-  /** Parse a term that may contain variables. Convention: uppercase start = type, lowercase = variable. */
-  private parseTermVar(): TermVar {
+  /** Parse a term that may contain variables. */
+  private parsePatternTerm(): PatternTerm {
     const ident = this.expect("IDENT");
 
     if (isVariable(ident.value)) {
@@ -270,20 +252,20 @@ class Parser {
       this.err(`Alias '${ident.value}' cannot be used as a term constructor`, ident.line, ident.col);
     }
 
-    const children: TermVar[] = [];
+    const children: PatternTerm[] = [];
     if (this.at("LPAREN")) {
       this.advance();
       if (!this.at("RPAREN")) {
-        children.push(this.parseTermVar());
+        children.push(this.parsePatternTerm());
         while (this.at("COMMA")) {
           this.advance();
-          children.push(this.parseTermVar());
+          children.push(this.parsePatternTerm());
         }
       }
       this.expect("RPAREN");
     }
 
-    return { kind: "term", typeName: ident.value, children };
+    return { kind: "term", ctor: ident.value, children };
   }
 }
 
@@ -298,6 +280,9 @@ function isVariable(name: string): boolean {
 
 export function parseProgram(source: string): Program {
   const tokens = tokenize(source);
-  const parser = new Parser(tokens);
-  return parser.parse();
+  const genericProgram = new Parser(tokens).parse();
+  validateGeneric(genericProgram);
+  const program = monomorphize(genericProgram);
+  validateMonomorphic(program.signature, program.rules, program.input);
+  return program;
 }

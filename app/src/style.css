@@ -160,6 +160,11 @@ main {
   font-style: italic;
 }
 
+.hl-typevar {
+  color: #1864ab;
+  font-style: italic;
+}
+
 .hl-comment {
   color: var(--text-muted);
   font-style: italic;

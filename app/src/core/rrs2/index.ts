@@ -8,18 +8,24 @@ const defaultProgram = `signature:
         Nat
     alias Nat: Succ | Zero
 
-    type SumInput:
-        Nat
-        Nat
-    type SumOutput:
-        Nat
+    const Nil
+    type Cons<'t>:
+        head: 't
+        tail: List<'t>
+    alias List<'t>: Cons<'t> | Nil
+
+    type Reverse:
+        List<Nat>
+    type ReverseAcc:
+        todo: List<Nat>
+        done: List<Nat>
 
 rules:
-    SumInput(Succ(ltail), right) -> SumInput(ltail, Succ(right))
-    SumInput(Zero, right) -> SumOutput(right)
+    Reverse(xs) -> ReverseAcc(xs, Nil)
+    ReverseAcc(Cons(h, t), done) -> ReverseAcc(t, Cons(h, done))
 
 input:
-    SumInput(Succ(Succ(Succ(Zero))), Succ(Succ(Zero)))`;
+    Reverse(Cons(Succ(Zero), Cons(Succ(Succ(Zero)), Cons(Zero, Nil))))`;
 
 export const rrs2: Language = {
   id: "rrs2",

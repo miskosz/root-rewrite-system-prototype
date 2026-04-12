@@ -57,6 +57,22 @@ export function highlight(source: string): string {
       continue;
     }
 
+    // Angle brackets (type-arg delimiters)
+    if (source[i] === "<" || source[i] === ">") {
+      parts.push(`<span class="hl-operator">${escapeHtml(source[i])}</span>`);
+      i++;
+      continue;
+    }
+
+    // Type variables: 't, 'key
+    if (source[i] === "'" && i + 1 < source.length && /[a-z]/.test(source[i + 1])) {
+      let end = i + 1;
+      while (end < source.length && /[A-Za-z0-9_]/.test(source[end])) end++;
+      parts.push(`<span class="hl-typevar">${escapeHtml(source.slice(i, end))}</span>`);
+      i = end;
+      continue;
+    }
+
     // Parentheses
     if (source[i] === "(" || source[i] === ")") {
       parts.push(escapeHtml(source[i]));

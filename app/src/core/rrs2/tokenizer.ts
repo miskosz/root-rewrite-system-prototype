@@ -4,11 +4,14 @@
 
 export type TokenKind =
   | "IDENT"    // e.g. Zero, Cons, x
+  | "TYPEVAR"  // 't, 'key (apostrophe + lowercase ident)
   | "ARROW"    // ->
   | "PIPE"     // |
   | "COLON"    // :
   | "LPAREN"   // (
   | "RPAREN"   // )
+  | "LANGLE"   // <
+  | "RANGLE"   // >
   | "COMMA"    // ,
   | "KW";      // signature, rules, input, const, type, alias
 
@@ -82,12 +85,27 @@ export function tokenize(source: string): Token[] {
       ":": "COLON",
       "(": "LPAREN",
       ")": "RPAREN",
+      "<": "LANGLE",
+      ">": "RANGLE",
       ",": "COMMA",
     };
     if (source[i] in singleChars) {
       tokens.push({ kind: singleChars[source[i]], value: source[i], line, col: startCol });
       i++;
       col++;
+      continue;
+    }
+
+    // Type variables: 't, 'key
+    if (source[i] === "'" && i + 1 < source.length && /[a-z]/.test(source[i + 1])) {
+      let start = i;
+      i++;
+      col++;
+      while (i < source.length && /[A-Za-z0-9_]/.test(source[i])) {
+        i++;
+        col++;
+      }
+      tokens.push({ kind: "TYPEVAR", value: source.slice(start, i), line, col: startCol });
       continue;
     }
 
