@@ -181,22 +181,25 @@ export function highlightMatch(
 ): void {
   const padding = 20;
   const layout = layoutTree(term);
-  const containerWidth = container.clientWidth;
-  const rootCx = Math.max(containerWidth / 2, layout.width / 2 + padding);
-  positionTree(layout, rootCx, padding);
+  positionTree(layout, 0, 0);
 
   const annotated = annotateTree(rule.left, layout);
   const varLayouts = collectVarLayouts(annotated);
 
-  const svgWidth = Math.max(containerWidth, rootCx + layout.width / 2 + padding);
-  const svgHeight = layout.height + padding * 2;
+  const vbX = -layout.width / 2 - padding;
+  const vbWidth = layout.width + padding * 2;
+  const vbHeight = layout.height + padding;
 
   container.innerHTML = "";
   const svg = document.createElementNS(SVG_NS, "svg");
-  svg.setAttribute("width", String(svgWidth));
-  svg.setAttribute("height", String(svgHeight));
-  svg.setAttribute("viewBox", `0 0 ${svgWidth} ${svgHeight}`);
+  svg.setAttribute("width", "100%");
+  svg.setAttribute("height", "100%");
+  svg.setAttribute("viewBox", `${vbX} 0 ${vbWidth} ${vbHeight}`);
+  svg.setAttribute("preserveAspectRatio", "xMidYMin meet");
   svg.style.display = "block";
+  svg.style.maxWidth = `${vbWidth}px`;
+  svg.style.maxHeight = `${vbHeight}px`;
+  svg.style.margin = "auto";
   container.appendChild(svg);
 
   const rootG = document.createElementNS(SVG_NS, "g") as SVGGElement;
@@ -243,14 +246,12 @@ export async function animateStep(
   const oldLayout = layoutTree(oldTerm);
   const newLayout = layoutTree(newTerm);
 
-  // Pin both roots at the container's horizontal centre so the root never
-  // jumps on screen, matching what renderTree does.
-  const containerWidth = container.clientWidth;
-  const maxHalf = Math.max(oldLayout.width, newLayout.width) / 2;
-  const rootCx = Math.max(containerWidth / 2, maxHalf + padding);
-
-  positionTree(oldLayout, rootCx, padding);
-  positionTree(newLayout, rootCx, padding);
+  // Both trees anchor their root at absolute x=0 in SVG coordinates. The
+  // viewBox is shifted by a negative x so the tree is visually centered.
+  // We interpolate the viewBox from old bounds to new bounds during the
+  // move phase so the visible area smoothly resizes.
+  positionTree(oldLayout, 0, 0);
+  positionTree(newLayout, 0, 0);
 
   // ── Annotate ──
   const oldAnnotated = annotateTree(rule.left, oldLayout);
@@ -259,17 +260,28 @@ export async function animateStep(
   const oldVarLayouts = collectVarLayouts(oldAnnotated);
   const newVarLayouts = collectVarLayouts(newAnnotated);
 
-  // ── SVG setup ──
-  const maxHalfWidth = Math.max(oldLayout.width, newLayout.width) / 2;
-  const svgWidth = Math.max(containerWidth, rootCx + maxHalfWidth + padding);
-  const svgHeight = Math.max(oldLayout.height, newLayout.height) + padding * 2;
+  // ── viewBox bounds for old and new ──
+  const oldVb = {
+    x: -oldLayout.width / 2 - padding,
+    w: oldLayout.width + padding * 2,
+    h: oldLayout.height + padding,
+  };
+  const newVb = {
+    x: -newLayout.width / 2 - padding,
+    w: newLayout.width + padding * 2,
+    h: newLayout.height + padding,
+  };
 
   container.innerHTML = "";
   const svg = document.createElementNS(SVG_NS, "svg");
-  svg.setAttribute("width", String(svgWidth));
-  svg.setAttribute("height", String(svgHeight));
-  svg.setAttribute("viewBox", `0 0 ${svgWidth} ${svgHeight}`);
+  svg.setAttribute("width", "100%");
+  svg.setAttribute("height", "100%");
+  svg.setAttribute("viewBox", `${oldVb.x} 0 ${oldVb.w} ${oldVb.h}`);
+  svg.setAttribute("preserveAspectRatio", "xMidYMin meet");
   svg.style.display = "block";
+  svg.style.maxWidth = `${oldVb.w}px`;
+  svg.style.maxHeight = `${oldVb.h}px`;
+  svg.style.margin = "auto";
   container.appendChild(svg);
 
   const rootG = document.createElementNS(SVG_NS, "g") as SVGGElement;
@@ -399,6 +411,14 @@ export async function animateStep(
         line.setAttribute("opacity", String(t));
       }
 
+      // Interpolate viewBox so the visible area grows/shrinks smoothly.
+      const curX = oldVb.x + (newVb.x - oldVb.x) * t;
+      const curW = oldVb.w + (newVb.w - oldVb.w) * t;
+      const curH = oldVb.h + (newVb.h - oldVb.h) * t;
+      svg.setAttribute("viewBox", `${curX} 0 ${curW} ${curH}`);
+      svg.style.maxWidth = `${curW}px`;
+      svg.style.maxHeight = `${curH}px`;
+
       if (rawT < 1) {
         requestAnimationFrame(tick);
       } else {
@@ -409,17 +429,8 @@ export async function animateStep(
   });
 
   // ── Settle: re-render new tree in-place with normal colors ──
-  // Clear the animated content but reuse the same SVG to avoid dimension jumps
+  // The viewBox is already at new bounds (animation ended at t=1), so no
+  // dimension change is needed — just swap the DOM content.
   while (rootG.firstChild) rootG.removeChild(rootG.firstChild);
-
-  // Resize SVG to fit the new tree (root stays at container centre)
-  const finalRight = rootCx + newLayout.width / 2;
-  const finalWidth = Math.max(containerWidth, finalRight + padding);
-  const finalHeight = newLayout.height + padding * 2;
-  svg.setAttribute("width", String(finalWidth));
-  svg.setAttribute("height", String(finalHeight));
-  svg.setAttribute("viewBox", `0 0 ${finalWidth} ${finalHeight}`);
-
-  // newLayout is already positioned with root at rootCx — just render
   renderLayoutInto(newLayout, rootG);
 }

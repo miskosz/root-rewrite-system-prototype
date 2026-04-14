@@ -135,23 +135,24 @@ export function renderTree(term: Term, container: HTMLElement, highlightRoot = f
   const layout = layoutTree(term);
   const padding = 20;
 
-  // Pin the root at the horizontal centre of the container so it stays
-  // fixed on screen regardless of tree shape.
-  const containerWidth = container.clientWidth;
-  const rootCx = Math.max(containerWidth / 2, layout.width / 2 + padding);
-  positionTree(layout, rootCx, padding);
+  // Root is anchored at absolute x=0 so that successive renders never shift
+  // the root horizontally. The viewBox uses a negative x to include the
+  // tree's left half.
+  positionTree(layout, 0, 0);
 
-  // SVG must be wide enough for whichever side of the tree extends further.
-  const treeLeft = rootCx - layout.width / 2;
-  const treeRight = rootCx + layout.width / 2;
-  const svgWidth = Math.max(containerWidth, treeRight + padding, -treeLeft + padding + containerWidth);
-  const svgHeight = layout.height + padding * 2;
+  const vbX = -layout.width / 2 - padding;
+  const vbWidth = layout.width + padding * 2;
+  const vbHeight = layout.height + padding;
 
   const svg = document.createElementNS(SVG_NS, "svg");
-  svg.setAttribute("width", String(svgWidth));
-  svg.setAttribute("height", String(svgHeight));
-  svg.setAttribute("viewBox", `0 0 ${svgWidth} ${svgHeight}`);
+  svg.setAttribute("width", "100%");
+  svg.setAttribute("height", "100%");
+  svg.setAttribute("viewBox", `${vbX} 0 ${vbWidth} ${vbHeight}`);
+  svg.setAttribute("preserveAspectRatio", "xMidYMin meet");
   svg.style.display = "block";
+  svg.style.maxWidth = `${vbWidth}px`;
+  svg.style.maxHeight = `${vbHeight}px`;
+  svg.style.margin = "auto";
 
   const g = document.createElementNS(SVG_NS, "g") as SVGGElement;
   svg.appendChild(g);
