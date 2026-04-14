@@ -6,7 +6,7 @@ function escapeHtml(s: string): string {
 
 function collectAliasNames(source: string): Set<string> {
   const names = new Set<string>();
-  const re = /\balias\s+([A-Za-z_][A-Za-z0-9_]*)\s*:/g;
+  const re = /\balias\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?:<[^>]*>)?\s*:/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(source)) !== null) names.add(m[1]);
   return names;
