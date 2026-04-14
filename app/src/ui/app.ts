@@ -37,17 +37,33 @@ export function initApp(): void {
 
   const highlightCode = document.getElementById("highlight-code")!;
 
-  let currentLanguage: Language = LANGUAGES[0];
+  const STORAGE_LANG_KEY = "rrs:lang";
+  const sourceKey = (langId: string) => `rrs:source:${langId}`;
+
+  const savedLangId = localStorage.getItem(STORAGE_LANG_KEY);
+  let currentLanguage: Language =
+    (savedLangId && LANGUAGES.find((l) => l.id === savedLangId)) || LANGUAGES[0];
+
+  function loadSourceFor(lang: Language): string {
+    return localStorage.getItem(sourceKey(lang.id)) ?? lang.defaultProgram;
+  }
 
   function updateHighlight() {
     highlightCode.innerHTML = currentLanguage.highlight(sourceEl.value);
   }
 
-  // Initialize editor with the default language's default program
-  sourceEl.value = currentLanguage.defaultProgram;
+  sourceEl.value = loadSourceFor(currentLanguage);
   updateHighlight();
 
-  sourceEl.addEventListener("input", updateHighlight);
+  const langRadioForCurrent = document.querySelector<HTMLInputElement>(
+    `input[name="lang"][value="${currentLanguage.id}"]`,
+  );
+  if (langRadioForCurrent) langRadioForCurrent.checked = true;
+
+  sourceEl.addEventListener("input", () => {
+    updateHighlight();
+    localStorage.setItem(sourceKey(currentLanguage.id), sourceEl.value);
+  });
 
   // Sync scroll between textarea and highlight layer
   const highlightLayer = document.getElementById("highlight-layer")!;
@@ -96,6 +112,7 @@ export function initApp(): void {
     radio.addEventListener("change", () => {
       if (!radio.checked) return;
       currentLanguage = getLanguage(radio.value);
+      localStorage.setItem(STORAGE_LANG_KEY, currentLanguage.id);
 
       // Reset interpreter state
       rules = [];
@@ -107,7 +124,7 @@ export function initApp(): void {
       treeContainer.innerHTML = "";
       setStepControls(false);
 
-      sourceEl.value = currentLanguage.defaultProgram;
+      sourceEl.value = loadSourceFor(currentLanguage);
       updateHighlight();
 
       setStatus(`Switched to ${currentLanguage.label}`);
