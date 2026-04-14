@@ -219,6 +219,19 @@ export function initApp(): void {
       return;
     }
 
+    if (e.key === "Enter" && !e.metaKey && !e.altKey && !e.ctrlKey && !e.shiftKey) {
+      const text = sourceEl.value;
+      const lineStart = text.lastIndexOf("\n", selStart - 1) + 1;
+      let indentEnd = lineStart;
+      while (indentEnd < selStart && text[indentEnd] === " ") indentEnd++;
+      const indent = text.substring(lineStart, indentEnd);
+      if (indent.length > 0) {
+        e.preventDefault();
+        insertText("\n" + indent);
+        return;
+      }
+    }
+
     if (e.key === "Backspace" && !e.metaKey && !e.altKey && !e.ctrlKey && selStart === selEnd) {
       const text = sourceEl.value;
       const lineStart = text.lastIndexOf("\n", selStart - 1) + 1;
