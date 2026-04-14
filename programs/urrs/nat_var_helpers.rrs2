@@ -1,0 +1,168 @@
+# Helpers
+
+signature:
+
+    const E
+    type S:
+        Nat
+    alias Nat: S | E
+
+    type Id:
+        Nat
+
+    type Var:
+        Nat
+
+    const Nil
+    type L<'t>:
+        head: 't
+        tail: List<'t>
+    alias List<'t>: L<'t> | Nil
+
+    type IdTerm:
+        id: Id
+        children: List<Term>
+    alias Term: IdTerm | Var
+
+    # ---
+
+    const False
+    const True
+    alias Bool: False | True
+
+    type Bind:
+        var: Var
+        term: Term
+
+    type MatchesInput:
+        term: Term
+        varterm: Term
+    type MatchesOutput:
+        matches: Bool
+
+    # ---
+
+    type Runtime:
+        call_stack: List<CallType>
+        value_stack: List<ValueType>
+    alias CallType: NatEq | NatEqCombine | NatCopy | NatCopyCombine | VarCopy | VarCopyCombine | ListMerge<Nat>
+    alias ValueType: NatEqOut | NatCopyOut | VarCopyOut | ListMergeOut<Nat>
+
+    type NatEq:
+        Nat
+        Nat
+    type NatEqOut:
+        in: NatEq
+        out: Bool
+    const NatEqCombine
+
+    type NatCopy:
+        Nat
+    type NatCopyOut:
+        Nat
+        Nat
+    const NatCopyCombine
+
+    type VarCopy:
+        Var
+    type VarCopyOut:
+        Var
+        Var
+    const VarCopyCombine
+
+    type ListMerge<'t>:
+        List<'t>
+        List<'t>
+    type ListMergeOut<'t>:
+        List<'t>
+
+rules:
+    # NatEq
+    # NatEq(E, E) = NatEqOut(NatEq(E, E), True)
+    Runtime(L(NatEq(E, E), cstack), vstack) ->
+        Runtime(cstack, L(NatEqOut(NatEq(E, E), True), vstack))
+    # NatEq(S(x), S(y)) =
+    # | NatEq(a, b), out = NatEq(x, y)
+    # | return NatEqOut(NatEq(S(a), S(b)), out)
+    Runtime(L(NatEq(S(x), S(y)), cstack), vstack) ->
+        Runtime(
+            L(NatEq(x, y),
+            L(NatEqCombine,
+                cstack)),
+            vstack
+        )
+    Runtime(
+        L(NatEqCombine, cstack),
+        L(NatEqOut(NatEq(x, y), val), vstack)
+    ) ->
+        Runtime(cstack, L(NatEqOut(NatEq(S(x), S(y)), val), vstack))
+    # NatEq(_x, _y) = NatEqOut(NatEq(_x, _y), False)
+    Runtime(L(NatEq(x, y), cstack), vstack) ->
+        Runtime(cstack, L(NatEqOut(NatEq(x, y), False), vstack))
+
+    # NatCopy
+    # NatCopy(E) = NatCopyOut(E, E)
+    Runtime(L(NatCopy(E), cstack), vstack) ->
+        Runtime(cstack, L(NatCopyOut(E, E), vstack))
+    # NatCopy(S(x)) =
+    # | a, b = NatCopy(x)
+    # | return S(a), S(b)
+    Runtime(L(NatCopy(S(x)), cstack), vstack) ->
+        Runtime(
+            L(NatCopy(x),
+            L(NatCopyCombine,
+                cstack)),
+            vstack
+        )
+    Runtime(
+        L(NatCopyCombine, cstack),
+        L(NatCopyOut(x, y), vstack)
+    ) ->
+        Runtime(cstack, L(NatCopyOut(S(x), S(y)), vstack))
+
+    # VarCopy
+    # VarCopy(Var(x)) =
+    # | a, b = NatCopy(x)
+    # | return Var(a), Var(b)
+    Runtime(L(VarCopy(Var(x)), cstack), vstack) ->
+        Runtime(
+            L(NatCopy(x),
+            L(VarCopyCombine,
+                cstack)),
+            vstack
+        )
+    Runtime(
+        L(VarCopyCombine, cstack),
+        L(NatCopyOut(x, y), vstack)
+    ) ->
+        Runtime(cstack, L(VarCopyOut(Var(x), Var(y)), vstack))
+
+    # ListMerge
+    # ListMerge(Nil, l2) = ListMergeOut(l2)
+    Runtime(
+        L(ListMerge(Nil, l2), cstack), vstack
+    ) ->
+        Runtime(
+            cstack, L(ListMergeOut(l2), vstack)
+        )
+    # ListMerge(head :: tail, l2) = ListMerge(tail, head :: l2)
+    Runtime(
+        L(ListMerge(L(head, tail), l2), cstack), vstack
+    ) ->
+        Runtime(
+            L(ListMerge(tail, L(head, l2)), cstack), vstack
+        )
+
+input:
+    # Runtime(L(NatEq(S(S(E)), S(E)), Nil), Nil)
+    # Runtime(L(VarCopy(Var(S(S(E)))), Nil), Nil)
+    Runtime(
+        L(
+            ListMerge(
+                L(S(E), L(E, Nil)),
+                L(S(S(E)), Nil)
+            ),
+            Nil
+        ),
+        Nil
+    )

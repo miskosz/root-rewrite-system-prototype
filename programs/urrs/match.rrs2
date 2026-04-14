@@ -1,0 +1,123 @@
+# Term definition for URRS
+
+signature:
+
+    const E
+    type S:
+        Nat
+    alias Nat: S | E
+
+    type Id:
+        Nat
+
+    type Var:
+        Nat
+
+    const Nil
+    type L<'t>:
+        head: 't
+        tail: List<'t>
+    alias List<'t>: L<'t> | Nil
+
+    type IdTerm:
+        id: Id
+        children: List<Term>
+    alias Term: IdTerm | Var
+
+    # ---
+
+    const False
+    const True
+    alias Bool: False | True
+
+    type Bind:
+        var: Var
+        term: Term
+
+    type MatchesInput:
+        term: Term
+        varterm: Term
+    type MatchesOutput:
+        matches: Bool
+
+    # ---
+
+    type Runtime:
+        call_stack: List<CallType>
+        value_stack: List<ValueType>
+    alias CallType: Match | NatEq | IfTrueMatchChildren
+    alias ValueType: Bool
+
+    type Match:
+        term: Term
+        varterm: Term
+    type NatEq:
+        Nat
+        Nat
+    type IfTrueMatchChildren:
+        List<Term>
+        List<Term>
+
+rules:
+    MatchesInput(term, varterm) -> Runtime(L(Match(term, varterm), Nil), Nil)
+
+    # Match
+    # Runtime(L(Match(t, vt), ctail), vstack)
+    Runtime(L(Match(t, Var(id)), ctail), vstack) ->
+        Runtime(ctail, L(True, vstack))
+    Runtime(
+        L(Match(IdTerm(Id(id1), children1), IdTerm(Id(id2), children2)),
+            ctail),
+        vstack
+    ) ->
+        Runtime(
+            L(NatEq(id1, id2),
+            L(IfTrueMatchChildren(children1, children2),
+                ctail)),
+            vstack
+        )
+    Runtime(L(Match(t, vt), ctail), vstack) ->
+        Runtime(ctail, L(False, vstack))
+
+    # NatEq
+    Runtime(L(NatEq(E, E), ctail), vstack) -> Runtime(ctail, L(True, vstack))
+    Runtime(L(NatEq(S(n1), S(n2)), ctail), vstack) ->
+        Runtime(L(NatEq(n1, n2), ctail), vstack)
+    Runtime(L(NatEq(x, y), ctail), vstack) -> Runtime(ctail, L(False, vstack))
+
+    # IfTrueMatchChildren
+    Runtime(L(IfTrueMatchChildren(ch1, ch2), ctail), L(False, vstack)) ->
+        Runtime(ctail, L(False, vstack))
+    Runtime(
+        L(IfTrueMatchChildren(L(t1, ch1), L(t2, ch2)),
+            ctail),
+        L(True, vstack)
+    ) ->
+        Runtime(
+            L(Match(t1, t2),
+            L(IfTrueMatchChildren(ch1, ch2),
+                ctail)),
+            vstack
+        )
+    Runtime(L(IfTrueMatchChildren(Nil, Nil), ctail), L(True, vstack)) ->
+        Runtime(ctail, L(True, vstack))
+    Runtime(L(IfTrueMatchChildren(ch1, ch2), ctail), L(True, vstack)) ->
+        Runtime(ctail, L(False, vstack))
+
+
+input:
+    MatchesInput(
+        IdTerm(
+            Id(S(E)),
+            L(
+                IdTerm(
+                    Id(S(E)),
+                    L(IdTerm(Id(E), Nil), Nil)
+                ),
+            Nil)
+        ),
+        IdTerm(
+            Id(S(E)),
+            L(Var(E), Nil)
+        )
+    )

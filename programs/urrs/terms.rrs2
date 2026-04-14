@@ -1,0 +1,32 @@
+# Term definition for URRS
+
+signature:
+
+    const E
+    type S:
+        Nat
+    alias Nat: S | E
+
+    type Id:
+        Nat
+
+    type Var:
+        Nat
+
+    const Nil
+    type L<'t>:
+        head: 't
+        tail: List<'t>
+    alias List<'t>: L<'t> | Nil
+
+    type Term:
+        id_or_var: Id | Var
+        children: List<Term>
+
+rules:
+
+input:
+    Term(
+        Id(E),
+        L(Term(Var(E), Nil), Nil)
+    )
