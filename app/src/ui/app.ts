@@ -12,6 +12,7 @@ export function initApp(): void {
   const btnParse = document.getElementById("btn-parse") as HTMLButtonElement;
   const btnMatch = document.getElementById("btn-match") as HTMLButtonElement;
   const btnStep = document.getElementById("btn-step") as HTMLButtonElement;
+  const btnUndo = document.getElementById("btn-undo") as HTMLButtonElement;
   const btnRun = document.getElementById("btn-run") as HTMLButtonElement;
 
   // Resize handle logic
@@ -247,6 +248,7 @@ export function initApp(): void {
 
   let rules: Rule[] = [];
   let currentTerm: Term | null = null;
+  let history: Term[] = [];
   let stepCount = 0;
   let justStepped = false;
   let animating = false;
@@ -260,6 +262,10 @@ export function initApp(): void {
     btnMatch.disabled = !enabled;
     btnStep.disabled = !enabled;
     btnRun.disabled = !enabled;
+  }
+
+  function updateUndoButton() {
+    btnUndo.disabled = animating || history.length === 0;
   }
 
   function renderCurrent() {
@@ -279,12 +285,14 @@ export function initApp(): void {
       // Reset interpreter state
       rules = [];
       currentTerm = null;
+      history = [];
       stepCount = 0;
       justStepped = false;
       animating = false;
 
       treeContainer.innerHTML = "";
       setStepControls(false);
+      updateUndoButton();
 
       sourceEl.value = loadSourceFor(currentLanguage);
       updateHighlight();
@@ -298,15 +306,19 @@ export function initApp(): void {
       const program = currentLanguage.parse(sourceEl.value);
       rules = program.rules;
       currentTerm = program.input;
+      history = [];
       stepCount = 0;
       justStepped = false;
 
       renderCurrent();
       setStepControls(true);
+      updateUndoButton();
       setStatus(`Parsed — ${rules.length} rule(s). Step count: 0`, "success");
     } catch (e) {
       treeContainer.innerHTML = "";
       setStepControls(false);
+      history = [];
+      updateUndoButton();
       if (e instanceof ParseError) {
         setStatus(`${e.message}`, "error");
       } else {
@@ -339,8 +351,10 @@ export function initApp(): void {
     if (result) {
       animating = true;
       setStepControls(false);
+      updateUndoButton();
 
       const oldTerm = currentTerm;
+      history.push(oldTerm);
       currentTerm = result.term;
       stepCount++;
 
@@ -349,6 +363,7 @@ export function initApp(): void {
       animating = false;
       justStepped = true;
       setStepControls(true);
+      updateUndoButton();
       setStatus(`Step ${stepCount}: rule ${result.ruleIndex + 1} matched`, "success");
     } else {
       justStepped = false;
@@ -357,6 +372,17 @@ export function initApp(): void {
       btnStep.disabled = true;
       btnRun.disabled = true;
     }
+  });
+
+  btnUndo.addEventListener("click", () => {
+    if (animating || history.length === 0) return;
+    currentTerm = history.pop()!;
+    stepCount--;
+    justStepped = false;
+    renderCurrent();
+    setStepControls(true);
+    updateUndoButton();
+    setStatus(`Undid step — now at step ${stepCount}`, "success");
   });
 
   btnRun.addEventListener("click", () => {
@@ -369,6 +395,7 @@ export function initApp(): void {
     while (steps < maxSteps) {
       const result = step(rules, term);
       if (!result) break;
+      history.push(term);
       term = result.term;
       steps++;
     }
@@ -377,6 +404,7 @@ export function initApp(): void {
     stepCount += steps;
     justStepped = steps > 0;
     renderCurrent();
+    updateUndoButton();
 
     if (steps >= maxSteps) {
       setStatus(`Stopped after ${maxSteps} steps (limit reached). Total: ${stepCount}`, "error");
