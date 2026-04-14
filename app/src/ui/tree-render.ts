@@ -142,17 +142,18 @@ export function renderTree(term: Term, container: HTMLElement, highlightRoot = f
 
   const vbX = -layout.width / 2 - padding;
   const vbWidth = layout.width + padding * 2;
-  const vbHeight = layout.height + padding;
+  const topClip = 2;
+  const vbHeight = layout.height + padding + topClip;
 
   const svg = document.createElementNS(SVG_NS, "svg");
   svg.setAttribute("width", "100%");
   svg.setAttribute("height", "100%");
-  svg.setAttribute("viewBox", `${vbX} 0 ${vbWidth} ${vbHeight}`);
+  svg.setAttribute("viewBox", `${vbX} ${-topClip} ${vbWidth} ${vbHeight}`);
   svg.setAttribute("preserveAspectRatio", "xMidYMin meet");
   svg.style.display = "block";
   svg.style.maxWidth = `${vbWidth}px`;
   svg.style.maxHeight = `${vbHeight}px`;
-  svg.style.margin = "auto";
+  svg.style.margin = "16px auto 0";
 
   const g = document.createElementNS(SVG_NS, "g") as SVGGElement;
   svg.appendChild(g);

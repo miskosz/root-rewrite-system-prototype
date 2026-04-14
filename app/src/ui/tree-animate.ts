@@ -27,6 +27,9 @@ const VAR_PALETTE: Array<{ fill: string; stroke: string }> = [
 const HIGHLIGHT_MS = 500;
 const MOVE_MS = 800;
 
+// Extra space above the root so the top stroke isn't clipped by the viewBox.
+const TOP_CLIP = 2;
+
 // ── Annotation ──────────────────────────────────────────────────────────
 
 type NodeRole =
@@ -188,18 +191,18 @@ export function highlightMatch(
 
   const vbX = -layout.width / 2 - padding;
   const vbWidth = layout.width + padding * 2;
-  const vbHeight = layout.height + padding;
+  const vbHeight = layout.height + padding + TOP_CLIP;
 
   container.innerHTML = "";
   const svg = document.createElementNS(SVG_NS, "svg");
   svg.setAttribute("width", "100%");
   svg.setAttribute("height", "100%");
-  svg.setAttribute("viewBox", `${vbX} 0 ${vbWidth} ${vbHeight}`);
+  svg.setAttribute("viewBox", `${vbX} ${-TOP_CLIP} ${vbWidth} ${vbHeight}`);
   svg.setAttribute("preserveAspectRatio", "xMidYMin meet");
   svg.style.display = "block";
   svg.style.maxWidth = `${vbWidth}px`;
   svg.style.maxHeight = `${vbHeight}px`;
-  svg.style.margin = "auto";
+  svg.style.margin = "16px auto 0";
   container.appendChild(svg);
 
   const rootG = document.createElementNS(SVG_NS, "g") as SVGGElement;
@@ -264,24 +267,24 @@ export async function animateStep(
   const oldVb = {
     x: -oldLayout.width / 2 - padding,
     w: oldLayout.width + padding * 2,
-    h: oldLayout.height + padding,
+    h: oldLayout.height + padding + TOP_CLIP,
   };
   const newVb = {
     x: -newLayout.width / 2 - padding,
     w: newLayout.width + padding * 2,
-    h: newLayout.height + padding,
+    h: newLayout.height + padding + TOP_CLIP,
   };
 
   container.innerHTML = "";
   const svg = document.createElementNS(SVG_NS, "svg");
   svg.setAttribute("width", "100%");
   svg.setAttribute("height", "100%");
-  svg.setAttribute("viewBox", `${oldVb.x} 0 ${oldVb.w} ${oldVb.h}`);
+  svg.setAttribute("viewBox", `${oldVb.x} ${-TOP_CLIP} ${oldVb.w} ${oldVb.h}`);
   svg.setAttribute("preserveAspectRatio", "xMidYMin meet");
   svg.style.display = "block";
   svg.style.maxWidth = `${oldVb.w}px`;
   svg.style.maxHeight = `${oldVb.h}px`;
-  svg.style.margin = "auto";
+  svg.style.margin = "16px auto 0";
   container.appendChild(svg);
 
   const rootG = document.createElementNS(SVG_NS, "g") as SVGGElement;
@@ -415,7 +418,7 @@ export async function animateStep(
       const curX = oldVb.x + (newVb.x - oldVb.x) * t;
       const curW = oldVb.w + (newVb.w - oldVb.w) * t;
       const curH = oldVb.h + (newVb.h - oldVb.h) * t;
-      svg.setAttribute("viewBox", `${curX} 0 ${curW} ${curH}`);
+      svg.setAttribute("viewBox", `${curX} ${-TOP_CLIP} ${curW} ${curH}`);
       svg.style.maxWidth = `${curW}px`;
       svg.style.maxHeight = `${curH}px`;
 
