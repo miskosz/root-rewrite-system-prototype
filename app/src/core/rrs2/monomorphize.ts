@@ -336,7 +336,7 @@ function walkPattern(
   if (!matched || matched.kind !== "concrete") {
     throw new ParseError(
       `Rule ${ruleIndex + 1}: constructor '${pt.ctor}' does not match expected type '${mangleRef(expected)}'`,
-      0, 0,
+      pt.line, pt.col,
     );
   }
   const decl = sig.get(matched.name)!;
@@ -345,7 +345,7 @@ function walkPattern(
   if (pt.children.length !== decl.childTypes.length) {
     throw new ParseError(
       `Rule ${ruleIndex + 1}: constructor '${pt.ctor}' expects ${decl.childTypes.length} children, got ${pt.children.length}`,
-      0, 0,
+      pt.line, pt.col,
     );
   }
   const children: TermVar[] = [];
@@ -359,9 +359,26 @@ function walkPattern(
     const slotExpanded = expandSlot(slot, env, sig);
     const childExpected = pickConstructor(slotExpanded, childPt.ctor);
     if (!childExpected) {
+      const allowed = slotExpanded.map(mangleRef);
+      const slotSubstituted = slot.map((ref) => substituteRef(ref, env));
+      const slotDesc = slotSubstituted.map(mangleRef).join(" | ");
+      const aliasHint =
+        slotSubstituted.length === 1 &&
+        slotSubstituted[0].kind === "concrete" &&
+        sig.get(slotSubstituted[0].name)?.isAlias
+          ? ` (alias '${slotSubstituted[0].name}')`
+          : "";
+      const allowedList =
+        allowed.length === 0
+          ? "(none)"
+          : allowed.length <= 12
+            ? allowed.join(", ")
+            : `${allowed.slice(0, 12).join(", ")}, ... (${allowed.length} total)`;
       throw new ParseError(
-        `Rule ${ruleIndex + 1}: constructor '${childPt.ctor}' does not match any member of slot ${i + 1} for '${pt.ctor}'`,
-        0, 0,
+        `Rule ${ruleIndex + 1}: constructor '${childPt.ctor}' is not allowed at slot ${i + 1} of '${pt.ctor}'. ` +
+          `Expected ${slotDesc}${aliasHint}. ` +
+          `Allowed constructors: ${allowedList}.`,
+        childPt.line, childPt.col,
       );
     }
     children.push(walkPattern(childPt, childExpected, sig, schedule, isLhs, ruleIndex));

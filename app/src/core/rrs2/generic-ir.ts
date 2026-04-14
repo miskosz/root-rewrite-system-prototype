@@ -25,8 +25,8 @@ export type GenericSignature = Map<string, GenericTypeDecl>;
 
 /** A pattern term that may contain term variables. No explicit type args. */
 export type PatternTerm =
-  | { kind: "term"; ctor: string; children: PatternTerm[] }
-  | { kind: "variable"; name: string };
+  | { kind: "term"; ctor: string; children: PatternTerm[]; line: number; col: number }
+  | { kind: "variable"; name: string; line: number; col: number };
 
 export interface GenericRule {
   left: PatternTerm;

@@ -245,7 +245,7 @@ class Parser {
     const ident = this.expect("IDENT");
 
     if (isVariable(ident.value)) {
-      return { kind: "variable", name: ident.value };
+      return { kind: "variable", name: ident.value, line: ident.line, col: ident.col };
     }
 
     if (this.aliasNames.has(ident.value)) {
@@ -265,7 +265,7 @@ class Parser {
       this.expect("RPAREN");
     }
 
-    return { kind: "term", ctor: ident.value, children };
+    return { kind: "term", ctor: ident.value, children, line: ident.line, col: ident.col };
   }
 }
 
