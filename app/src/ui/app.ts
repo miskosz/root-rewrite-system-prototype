@@ -72,14 +72,151 @@ export function initApp(): void {
     highlightLayer.scrollLeft = sourceEl.scrollLeft;
   });
 
+  // Using the deprecated execCommand is intentional: it is the only API that
+  // preserves the textarea's native undo history for programmatic edits.
+  const insertText = (text: string) =>
+    (document as any).execCommand("insertText", false, text);
+
+  // Expand [selStart, selEnd] to the full lines it touches. If the selection
+  // ends at column 0 of a line, that trailing line is not included.
+  function lineBlockBounds(text: string, selStart: number, selEnd: number) {
+    let effEnd = selEnd;
+    if (effEnd > selStart && text[effEnd - 1] === "\n") effEnd--;
+    const start = text.lastIndexOf("\n", selStart - 1) + 1;
+    let end = text.indexOf("\n", effEnd);
+    if (end === -1) end = text.length;
+    return { start, end };
+  }
+
+  function replaceLineBlock(
+    transform: (lines: string[]) => { lines: string[]; caretDeltas: (lineIdx: number) => number },
+  ) {
+    const text = sourceEl.value;
+    const selStart = sourceEl.selectionStart;
+    const selEnd = sourceEl.selectionEnd;
+    const { start, end } = lineBlockBounds(text, selStart, selEnd);
+    const oldLines = text.substring(start, end).split("\n");
+    const { lines: newLines, caretDeltas } = transform(oldLines);
+
+    const lineIndexOf = (offset: number) => {
+      if (offset <= start) return 0;
+      if (offset >= end) return oldLines.length - 1;
+      return text.substring(start, offset).split("\n").length - 1;
+    };
+    const offsetInLine = (offset: number, lineIdx: number) => {
+      const lineStart =
+        start +
+        oldLines.slice(0, lineIdx).reduce((n, l) => n + l.length + 1, 0);
+      return offset - lineStart;
+    };
+
+    const selStartLine = lineIndexOf(selStart);
+    const selEndLine = lineIndexOf(selEnd);
+    const selStartCol = offsetInLine(selStart, selStartLine);
+    const selEndCol = offsetInLine(selEnd, selEndLine);
+
+    sourceEl.setSelectionRange(start, end);
+    insertText(newLines.join("\n"));
+
+    const newLineStart = (lineIdx: number) =>
+      start +
+      newLines.slice(0, lineIdx).reduce((n, l) => n + l.length + 1, 0);
+
+    const clampCol = (lineIdx: number, col: number) =>
+      Math.max(0, Math.min(newLines[lineIdx].length, col + caretDeltas(lineIdx)));
+
+    const newSelStart = newLineStart(selStartLine) + clampCol(selStartLine, selStartCol);
+    const newSelEnd = newLineStart(selEndLine) + clampCol(selEndLine, selEndCol);
+    sourceEl.setSelectionRange(newSelStart, newSelEnd);
+  }
+
+  function indentSelection() {
+    replaceLineBlock((lines) => ({
+      lines: lines.map((l) => "    " + l),
+      caretDeltas: () => 4,
+    }));
+  }
+
+  function unindentSelection() {
+    const removed: number[] = [];
+    replaceLineBlock((lines) => {
+      const out = lines.map((l) => {
+        let i = 0;
+        while (i < 4 && l[i] === " ") i++;
+        removed.push(i);
+        return l.substring(i);
+      });
+      return { lines: out, caretDeltas: (idx) => -removed[idx] };
+    });
+  }
+
+  const COMMENT_PREFIX = "# ";
+
+  function toggleComment() {
+    const added: number[] = [];
+    replaceLineBlock((lines) => {
+      const nonEmpty = lines.filter((l) => l.trim().length > 0);
+      const allCommented =
+        nonEmpty.length > 0 && nonEmpty.every((l) => l.trimStart().startsWith("#"));
+
+      if (allCommented) {
+        const out = lines.map((l) => {
+          const leading = l.length - l.trimStart().length;
+          const rest = l.substring(leading);
+          if (!rest.startsWith("#")) {
+            added.push(0);
+            return l;
+          }
+          let remove = 1;
+          if (rest[1] === " ") remove = 2;
+          added.push(-remove);
+          return l.substring(0, leading) + rest.substring(remove);
+        });
+        return { lines: out, caretDeltas: (idx) => added[idx] };
+      } else {
+        const minIndent = Math.min(
+          ...lines
+            .filter((l) => l.trim().length > 0)
+            .map((l) => l.length - l.trimStart().length),
+        );
+        const indent = Number.isFinite(minIndent) ? minIndent : 0;
+        const out = lines.map((l) => {
+          if (l.trim().length === 0) {
+            added.push(0);
+            return l;
+          }
+          added.push(COMMENT_PREFIX.length);
+          return l.substring(0, indent) + COMMENT_PREFIX + l.substring(indent);
+        });
+        return { lines: out, caretDeltas: (idx) => added[idx] };
+      }
+    });
+  }
+
   sourceEl.addEventListener("keydown", (e) => {
-    if (e.key === "Tab") {
+    const selStart = sourceEl.selectionStart;
+    const selEnd = sourceEl.selectionEnd;
+    const multiLineSelection =
+      selStart !== selEnd &&
+      sourceEl.value.substring(selStart, selEnd).includes("\n");
+
+    if (e.key === "Tab" && !e.shiftKey) {
       e.preventDefault();
-      const start = sourceEl.selectionStart;
-      const end = sourceEl.selectionEnd;
-      sourceEl.value = sourceEl.value.substring(0, start) + "    " + sourceEl.value.substring(end);
-      sourceEl.selectionStart = sourceEl.selectionEnd = start + 4;
-      updateHighlight();
+      if (multiLineSelection) indentSelection();
+      else insertText("    ");
+      return;
+    }
+
+    if (e.key === "Tab" && e.shiftKey) {
+      e.preventDefault();
+      unindentSelection();
+      return;
+    }
+
+    if (e.key === "/" && e.metaKey) {
+      e.preventDefault();
+      toggleComment();
+      return;
     }
   });
 
