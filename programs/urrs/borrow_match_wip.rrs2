@@ -45,8 +45,8 @@ signature:
     type Runtime:
         call_stack: List<CallType>
         value_stack: List<ValueType>
-    alias CallType: NatEq | NatEqCombine | NatCopy | NatCopyCombine | ListMerge<Bind> | Match | MatchVarCombine | MatchCombine1 | MatchCombine2 | MatchChildren | MatchChildren2 | MatchChildren3 | MatchChildren4
-    alias ValueType: NatEqOut | NatCopyOut | ListMergeOut<Bind> | MatchOutFalse | MatchOutTrue | MatchChildrenOutFalse | MatchChildrenOutTrue
+    alias CallType: NatEq | NatEqCombine | NatCopy | NatCopyCombine | ListMerge<Bind> | Match | MatchVarCombine | MatchCombine1 | MatchCombine2 | MatchChildren | MatchChildren2 | MatchChildren3 | MatchChildren4 | Substitute | Substitute2 | Substitute3 | Substitute4 | FindBind | FindBind2 | FindBind3
+    alias ValueType: NatEqOut | NatCopyOut | ListMergeOut<Bind> | MatchOutFalse | MatchOutTrue | MatchChildrenOutFalse | MatchChildrenOutTrue | SubstituteOut | FindBindOutNoMatch | FindBindOutMatch
 
     type NatEq:
         Nat
@@ -105,6 +105,37 @@ signature:
     type MatchChildren4:
         h2: Term
         tail2: List<Term>
+
+    type Substitute:
+        binds: List<Bind>
+        varterm: Term
+    type SubstituteOut:
+        unused_binds: List<Bind>
+        varterm: Term
+    const Substitute2
+    type Substitute3:
+        id: Id
+        chtail: List<Term>
+    type Substitute4:
+        id: Id
+        ch1: Term
+
+    type FindBind:
+        binds: List<Bind>
+        var: Var
+    type FindBindOutNoMatch:
+        binds: List<Bind>
+        var: Var
+    type FindBindOutMatch:
+        binds: List<Bind>
+        var: Var
+        match: Bind
+    type FindBind2:
+        term: Term
+        btail: List<Bind>
+    type FindBind3:
+        id1: Nat
+        term: Term
 
 
 rules:
@@ -333,6 +364,172 @@ rules:
                 vstack)
         )
 
+    # FindBind
+    # FindBind(Nil, var) = FindBindNoMatch(nil, var)
+    Runtime(
+        L(FindBind(Nil, var), cstack), vstack
+    ) ->
+        Runtime(
+            cstack,
+            L(FindBindOutNoMatch(Nil, var), vstack)
+        )
+    # FindBind(L(bind1, btail), Var(id2)) =
+    # | Bind(Var(id1), term) = bind1
+    # | id1, id2, out = NatEq(id1, id2)
+    # | if out == True:
+    # |     return FindBindOutMatch(btail, var, term)
+    # | match FindBind(btail, Var(id2)):
+    # |     case FindBindOutNoMatch(btail, Var(id2)):
+    # |         return FindBindOutNoMatch(bind1 :: btail, Var(id2))
+    # |     case FindBindOutMatch(btail, Var(id2), match):
+    # |         return FindBindOutMatch(bind1 :: btail, Var(id2), match)
+    Runtime(
+        L(FindBind(L(Bind(Var(id1), term), btail), Var(id2)),
+            cstack),
+        vstack
+    ) ->
+        Runtime(
+            L(NatEq(id1, id2),
+            L(FindBind2(term, btail),
+                cstack)),
+            vstack
+        )
+    Runtime(
+        L(FindBind2(term, btail), cstack),
+        L(NatEqOut(NatEq(id1, id2), True), vstack)
+    ) ->
+        Runtime(
+            cstack,
+            L(FindBindOutMatch(btail, Var(id2), term),
+                vstack)
+        )
+    Runtime(
+        L(FindBind2(term, btail), cstack),
+        L(NatEqOut(NatEq(id1, id2), False), vstack)
+    ) ->
+        Runtime(
+            L(FindBind(btail, Var(id2)),
+            L(FindBind3(id1, term),
+                cstack)),
+            vstack
+        )
+    Runtime(
+        L(FindBind3(id1, term), cstack),
+        L(FindBindOutNoMatch(btail, Var(id2)), vstack)
+    ) ->
+        Runtime(
+            cstack,
+            L(
+                FindBindOutNoMatch(
+                    L(Bind(id1, term), btail),
+                    Var(id2)
+                ),
+                vstack
+            )
+        )
+    Runtime(
+        L(FindBind3(id1, term), cstack),
+        L(FindBindOutMatch(btail, Var(id2), match), vstack)
+    ) ->
+        Runtime(
+            cstack,
+            L(
+                FindBindOutMatch(
+                    L(Bind(id1, term), btail),
+                    Var(id2),
+                    match
+                ),
+                vstack
+            )
+        )
+
+    # type Substitute:
+    #     binds: List<Bind>
+    #     varterm: Term
+    # type SubstituteOut:
+    #     unused_binds: List<Bind>
+    #     varterm: Term
+
+    # Substitute
+    # Substitute(binds, Var(id)) = 
+    # | out = FindBind(binds, Var(id))
+    # | if let FindBindOutMatch(binds, Var(id), match):
+    # |     return SubstituteOut(binds, match)
+    # | else:
+    # |     return SubstituteOut(binds, Var(id))
+    Runtime(
+        L(Substitute(binds, Var(id)),
+            cstack),
+        vstack
+    ) ->
+        Runtime(
+            L(FindBind(binds, Var(id)),
+            L(Substitute2,
+                cstack)),
+            vstack
+        )
+    Runtime(
+        L(Substitute2, cstack),
+        L(FindBindOutNoMatch(binds, Var(id)), vstack)
+    ) ->
+        Runtime(
+            cstack,
+            L(SubstituteOut(binds, Var(id)),
+                vstack)
+        )
+    Runtime(
+        L(Substitute2, cstack),
+        L(FindBindOutMatch(binds, Var(id), match), vstack)
+    ) ->
+        Runtime(
+            cstack,
+            L(SubstituteOut(binds, match),
+                vstack)
+        )
+    # Substitute(binds, IdTerm(id, Nil)) = SubstituteOut(binds, IdTerm(id, Nil))
+    Runtime(
+        L(Substitute(binds, IdTerm(id, Nil)), cstack),
+        vstack
+    ) ->
+        Runtime(
+            cstack,
+            L(SubstituteOut(binds, IdTerm(id, Nil)), vstack)
+        )
+    # Substitute(binds, IdTerm(id, ch1 :: chtail)) =
+    # | binds, sub_ch1 = Substitute(binds, ch1)
+    # | # Slight hack, we could also have SubstistuteMany that takes List<Term>
+    # | binds, IdTerm(Id(E), sub_chtail) = Substitute(binds, IdTerm(Id(E), chtail))
+    # | return SubstituteOut(binds, IdTerm(id, sub_ch1, sub_chtail))
+    Runtime(
+        L(Substitute(binds, IdTerm(id, L(ch1, chtail))), cstack),
+        vstack
+    ) ->
+        Runtime(
+            L(Substitute(binds, ch1),
+            L(Substitute3(id, chtail),
+                cstack)),
+            vstack
+        )
+    Runtime(
+        L(Substitute3(id, chtail), cstack),
+        L(SubstituteOut(binds, ch1), vstack)
+    ) ->
+        Runtime(
+            L(Substitute(binds, IdTerm(Id(E), chtail)),
+            L(Substitute4(id, ch1),
+                cstack)),
+            vstack
+        )
+    Runtime(
+        L(Substitute4(id, ch1), cstack),
+        L(SubstituteOut(binds, IdTerm(Id(E), chtail)), vstack)
+    ) ->
+        Runtime(
+            cstack,
+            L(SubstituteOut(binds, IdTerm(id, L(ch1, chtail))), vstack)
+        )
+
+
 
     
 input:
@@ -360,13 +557,54 @@ input:
     #     Nil
     # )
 
+    # Runtime(
+    #     L(
+    #         Match(
+    #             IdTerm(Id(S(E)), L(IdTerm(Id(E), Nil), Nil)),
+    #             IdTerm(Id(S(E)), L(Var(E), Nil))
+    #         ),
+    #         Nil
+    #     ),
+    #     Nil
+    # )
+    
+    # Runtime(Nil, Nil)
+
+    # Runtime(
+    #     L(
+    #         FindBind(
+    #             L(Bind(Var(S(S(E))), IdTerm(Id(E), Nil)),
+    #             L(Bind(Var(S(E)), IdTerm(Id(S(E)), Nil)),
+    #             L(Bind(Var(E), IdTerm(Id(S(S(E))), Nil)),
+    #                 Nil))),
+    #             Var(E)
+    #         ),
+    #         Nil
+    #     ),
+    #     Nil
+    # )
+
     Runtime(
         L(
-            Match(
-                IdTerm(Id(S(E)), L(IdTerm(Id(E), Nil), Nil)),
-                IdTerm(Id(S(E)), L(Var(E), Nil))
+            Substitute(
+                L(Bind(Var(S(S(E))), IdTerm(Id(E), Nil)),
+                L(Bind(Var(S(E)), IdTerm(Id(S(E)), Nil)),
+                L(Bind(Var(E), IdTerm(Id(S(S(E))), Nil)),
+                    Nil))),
+                IdTerm(
+                    Id(E),
+                    L(IdTerm(
+                        Id(S(E)),
+                        L(Var(S(S(E))),
+                        L(IdTerm(Id(E), Nil),
+                            Nil))
+                    ),
+                    L(Var(S(E)),
+                        Nil))
+                )
             ),
             Nil
         ),
         Nil
     )
+
