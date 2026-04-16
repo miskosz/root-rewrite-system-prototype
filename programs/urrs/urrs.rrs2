@@ -512,7 +512,7 @@ rules:
             cstack,
             L(
                 FindBindOutNoMatch(
-                    L(Bind(id1, term), btail),
+                    L(Bind(Var(id1), term), btail),
                     Var(id2)
                 ),
                 vstack
@@ -526,7 +526,7 @@ rules:
             cstack,
             L(
                 FindBindOutMatch(
-                    L(Bind(id1, term), btail),
+                    L(Bind(Var(id1), term), btail),
                     Var(id2),
                     match
                 ),
