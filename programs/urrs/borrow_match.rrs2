@@ -45,7 +45,7 @@ signature:
     type Runtime:
         call_stack: List<CallType>
         value_stack: List<ValueType>
-    alias CallType: NatEq | NatEqCombine | NatCopy | NatCopyCombine | ListMerge<Bind> | Match | MatchVarCombine | MatchCombine1 | MatchCombine2 | MatchChildren | MatchChildren2 | MatchChildren3 | MatchChildren4 | Substitute | Substitute2 | Substitute3 | Substitute4 | FindBind | FindBind2 | FindBind3
+    alias CallType: NatEq | NatEqCombine | NatCopy | NatCopyCombine | ListMerge<Bind> | Match | Match1 | Match2 | MatchCombine1 | MatchCombine2 | MatchChildren | MatchChildren2 | MatchChildren3 | MatchChildren4 | MatchChildren5 | Substitute | Substitute2 | Substitute3 | Substitute4 | FindBind | FindBind2 | FindBind3
     alias ValueType: NatEqOut | NatCopyOut | ListMergeOut<Bind> | MatchOutFalse | MatchOutTrue | MatchChildrenOutFalse | MatchChildrenOutTrue | SubstituteOut | FindBindOutNoMatch | FindBindOutMatch
 
     type NatEq:
@@ -77,9 +77,13 @@ signature:
         varterm: Term
     type MatchOutTrue:
         binds: List<Bind>
+        term: Term  # Skeleton, will match varterm
         varterm: Term
-    type MatchVarCombine:
+    type Match1:
         t: Term
+    type Match2:
+        t: Term
+        id1: Nat
     type MatchCombine1:
         ch1: List<Term>
         ch2: List<Term>
@@ -95,15 +99,23 @@ signature:
         ch2: List<Term>
     type MatchChildrenOutTrue:
         binds: List<Bind>
+        ch1: List<Term>  # Skeleton, will match ch2
         ch2: List<Term>
     type MatchChildren2:
         tail1: List<Term>
         tail2: List<Term>
     type MatchChildren3:
         head_binds: List<Bind>
+        h1: Term  # Skeleton, will match h2
         h2: Term
     type MatchChildren4:
+        h1: Term  # Skeleton
         h2: Term
+        tail1: List<Term>  # Skeleton
+        tail2: List<Term>
+    type MatchChildren5:
+        h2: Term
+        tail1: List<Term>  # Skeleton
         tail2: List<Term>
 
     type Substitute:
@@ -200,24 +212,34 @@ rules:
 
 
     # Match
-    # Match(t, Var(id)) = MatchOutTrue([Bind(Var(id), t)], Var(id))
+    # Match(t, Var(id)) = MatchOutTrue([Bind(Var(id), t)], Var(id), Var(id))
     Runtime(
         L(Match(t, Var(id)), cstack), vstack
     ) ->
         Runtime(
             L(NatCopy(id),
-            L(MatchVarCombine(t),
+            L(Match1(t),
                 cstack)),
             vstack
         )
     Runtime(
-        L(MatchVarCombine(t), cstack),
+        L(Match1(t), cstack),
         L(NatCopyOut(id1, id2), vstack)
+    ) ->
+        Runtime(
+            L(NatCopy(id2),
+            L(Match2(t, id1),
+                cstack)),
+            vstack
+        )
+    Runtime(
+        L(Match2(t, id1), cstack),
+        L(NatCopyOut(id2, id3), vstack)
     ) ->
         Runtime(
             cstack,
             L(
-                MatchOutTrue(L(Bind(Var(id1), t), Nil), Var(id2)),
+                MatchOutTrue(L(Bind(Var(id1), t), Nil), Var(id2), Var(id3)),
                 vstack
             )
         )
@@ -235,8 +257,12 @@ rules:
     # | match out:
     # |     case MatchChildrenFalse(ch1, ch2):
     # |         return MatchOutFalse(...)
-    # |     case MatchChildrenTrue(binds, ch2):
-    # |         return MatchOutTrue(binds, IdTerm(Id(id2), ch2))
+    # |     case MatchChildrenTrue(binds, ch1, ch2):
+    # |         return MatchOutTrue(
+    # |             binds,
+    # |             IdTerm(Id(id1), ch1),
+    # |             IdTerm(Id(id2), ch2)
+    # |         )
     Runtime(
         L(Match(IdTerm(Id(id1), ch1), IdTerm(Id(id2), ch2)), cstack),
         vstack
@@ -279,11 +305,11 @@ rules:
         )
     Runtime(
         L(MatchCombine2(id1, id2), cstack),
-        L(MatchChildrenOutTrue(binds, ch2), vstack)
+        L(MatchChildrenOutTrue(binds, ch1, ch2), vstack)
     ) ->
         Runtime(
             cstack,
-            L(MatchOutTrue(binds, IdTerm(Id(id2), ch2)),
+            L(MatchOutTrue(binds, IdTerm(Id(id1), ch1), IdTerm(Id(id2), ch2)),
                 vstack)
         )
     # Match(_x, _y) = MatchOut(Match(_x, _y))
@@ -296,23 +322,23 @@ rules:
         )
 
     # MatchChildren
-    # MatchChildren(Nil, Nil) = MatchChildrenOutTrue(Nil, Nil)
+    # MatchChildren(Nil, Nil) = MatchChildrenOutTrue(Nil, Nil, Nil)
     Runtime(
         L(MatchChildren(Nil, Nil), cstack), vstack
     ) ->
-        Runtime(cstack, L(MatchChildrenOutTrue(Nil, Nil), vstack))
+        Runtime(cstack, L(MatchChildrenOutTrue(Nil, Nil, Nil), vstack))
     # MatchChildren(h1 :: tail1, h2 :: tail2) =
     # | out = Match(h1, h2)
     # | if let MatchOutFalse(h1, h2) = out:
     # |     return MatchChildrenOutFalse(h1 :: tail1, h2 :: tail2)
-    # | MatchOutTrue(head_binds, h2) = out
+    # | MatchOutTrue(head_binds, h1, h2) = out
     # | out2 = MatchChildren(tail1, tail2)
     # | if let MatchChildrenOutFalse(tail1, tail2) = out:
-    # |     h1, h2 = Substitute(head_binds, h2)
+    # |     h1 = Substitute(head_binds, h1)
     # |     return MatchChildrenOutFalse(h1 :: tail1, h2 :: tail2)
-    # | MatchChildrenOutTrue(tail_binds, tail2) = out2
+    # | MatchChildrenOutTrue(tail_binds, tail1, tail2) = out2
     # | binds = ListMerge(head_binds, tail_binds)
-    # | return MatchChildrenOutTrue(binds, h2 :: tail2)
+    # | return MatchChildrenOutTrue(binds, h1 :: tail1, h2 :: tail2)
     Runtime(
         L(MatchChildren(L(h1, tail1), L(h2, tail2)),
             cstack),
@@ -335,32 +361,52 @@ rules:
         )
     Runtime(
         L(MatchChildren2(tail1, tail2), cstack),
-        L(MatchOutTrue(head_binds, h2), vstack)
+        L(MatchOutTrue(head_binds, h1, h2), vstack)
     ) ->
         Runtime(
             L(MatchChildren(tail1, tail2),
-            L(MatchChildren3(head_binds, h2),
+            L(MatchChildren3(head_binds, h1, h2),
                 cstack)),
             vstack
         )
-    # TODO: False branch
+    # - False branch
     Runtime(
-        L(MatchChildren3(head_binds, h2), cstack),
-        L(MatchChildrenOutTrue(tail_binds, tail2), vstack)
+        L(MatchChildren3(head_binds, h1, h2), cstack),
+        L(MatchChildrenOutFalse(tail1, tail2), vstack)
+    ) ->
+        Runtime(
+            L(Substitute(head_binds, h1),
+            L(MatchChildren5(h2, tail1, tail2),
+                cstack)),
+            vstack
+        )
+    Runtime(
+        L(MatchChildren5(h2, tail1, tail2), cstack),
+        L(SubstituteOut(unused_binds, h1), vstack)
+    ) ->
+        Runtime(
+            cstack,
+            L(MatchChildrenOutFalse(L(h1, tail1), L(h2, tail2)),
+                vstack)
+        )
+    # - True branch    
+    Runtime(
+        L(MatchChildren3(head_binds, h1, h2), cstack),
+        L(MatchChildrenOutTrue(tail_binds, tail1, tail2), vstack)
     ) ->
         Runtime(
             L(ListMerge(head_binds, tail_binds),
-            L(MatchChildren4(h2, tail2),
+            L(MatchChildren4(h1, h2, tail1, tail2),
                 cstack)),
             vstack
         )
     Runtime(
-        L(MatchChildren4(h2, tail2), cstack),
+        L(MatchChildren4(h1, h2, tail1, tail2), cstack),
         L(ListMergeOut(binds), vstack)
     ) ->
         Runtime(
             cstack,
-            L(MatchChildrenOutTrue(binds, L(h2, tail2)),
+            L(MatchChildrenOutTrue(binds, L(h1, tail1), L(h2, tail2)),
                 vstack)
         )
 
@@ -442,13 +488,6 @@ rules:
                 vstack
             )
         )
-
-    # type Substitute:
-    #     binds: List<Bind>
-    #     varterm: Term
-    # type SubstituteOut:
-    #     unused_binds: List<Bind>
-    #     varterm: Term
 
     # Substitute
     # Substitute(binds, Var(id)) = 
@@ -584,22 +623,43 @@ input:
     #     Nil
     # )
 
+    # Runtime(
+    #     L(
+    #         Substitute(
+    #             L(Bind(Var(S(S(E))), IdTerm(Id(E), Nil)),
+    #             L(Bind(Var(S(E)), IdTerm(Id(S(E)), Nil)),
+    #             L(Bind(Var(E), IdTerm(Id(S(S(E))), Nil)),
+    #                 Nil))),
+    #             IdTerm(
+    #                 Id(E),
+    #                 L(IdTerm(
+    #                     Id(S(E)),
+    #                     L(Var(S(S(E))),
+    #                     L(IdTerm(Id(E), Nil),
+    #                         Nil))
+    #                 ),
+    #                 L(Var(S(E)),
+    #                     Nil))
+    #             )
+    #         ),
+    #         Nil
+    #     ),
+    #     Nil
+    # )
+
     Runtime(
         L(
-            Substitute(
-                L(Bind(Var(S(S(E))), IdTerm(Id(E), Nil)),
-                L(Bind(Var(S(E)), IdTerm(Id(S(E)), Nil)),
-                L(Bind(Var(E), IdTerm(Id(S(S(E))), Nil)),
-                    Nil))),
+            Match(
                 IdTerm(
                     Id(E),
-                    L(IdTerm(
-                        Id(S(E)),
-                        L(Var(S(S(E))),
-                        L(IdTerm(Id(E), Nil),
-                            Nil))
-                    ),
-                    L(Var(S(E)),
+                    L(IdTerm(Id(E), Nil),
+                    L(IdTerm(Id(E), Nil),
+                        Nil))
+                ),
+                IdTerm(
+                    Id(E),
+                    L(Var(E),
+                    L(IdTerm(Id(S(E)), Nil),
                         Nil))
                 )
             ),
@@ -607,4 +667,4 @@ input:
         ),
         Nil
     )
-
+    
