@@ -15,7 +15,7 @@ export type TokenKind =
   | "COMMA"    // ,
   | "KW";      // signature, rules, input, const, type, alias
 
-export const KEYWORDS = new Set(["signature", "rules", "input", "const", "type", "alias"]);
+export const KEYWORDS = new Set(["signature", "rules", "input", "const", "type", "alias", "for", "in"]);
 
 export interface Token {
   kind: TokenKind;

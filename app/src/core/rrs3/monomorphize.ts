@@ -7,6 +7,7 @@ import type {
   PatternTerm,
   TypeRef,
 } from "./generic-ir";
+import { resolveFiniteConstAlias } from "./validator";
 
 // ---------------------------------------------------------------------------
 // Monomorphization
@@ -28,6 +29,7 @@ const INSTANTIATION_CAP = 1000;
 
 export function monomorphize(prog: GenericProgram): Program {
   const sig = prog.signature;
+  const rulesExpanded = expandForRules(prog.rules, sig);
   const seen = new Set<string>();
   const worklist: ConcreteRef[] = [];
   const outSig: Signature = new Map();
@@ -98,8 +100,8 @@ export function monomorphize(prog: GenericProgram): Program {
     outSig.set(key, { arity: childTypes.length, childTypes });
 
     // Find generic rules whose LHS root constructor matches.
-    for (let ri = 0; ri < prog.rules.length; ri++) {
-      const grule = prog.rules[ri];
+    for (let ri = 0; ri < rulesExpanded.length; ri++) {
+      const grule = rulesExpanded[ri];
       if (grule.left.kind !== "term" || grule.left.ctor !== ref.name) continue;
       const concreteRule = instantiateRule(grule, ref, sig, schedule, ri);
       outRules.push(concreteRule);
@@ -107,6 +109,61 @@ export function monomorphize(prog: GenericProgram): Program {
   }
 
   return { signature: outSig, rules: outRules, input: concreteInput };
+}
+
+// ---------------------------------------------------------------------------
+// `for v in Alias` expansion
+// ---------------------------------------------------------------------------
+
+/**
+ * Expand every rule's `for` bindings into the cartesian product of constant
+ * substitutions. Each bound variable is replaced by a zero-arity constructor
+ * term for the corresponding constant, restoring linearity.
+ */
+function expandForRules(rules: GenericRule[], sig: GenericSignature): GenericRule[] {
+  const out: GenericRule[] = [];
+  for (const rule of rules) {
+    if (rule.expansions.length === 0) {
+      out.push(rule);
+      continue;
+    }
+    const choices = rule.expansions.map((b) => ({
+      varName: b.varName,
+      consts: resolveFiniteConstAlias(b.aliasName, sig),
+    }));
+    const iter = (idx: number, env: Map<string, string>): void => {
+      if (idx === choices.length) {
+        out.push({
+          left: substitutePattern(rule.left, env),
+          right: substitutePattern(rule.right, env),
+          expansions: [],
+        });
+        return;
+      }
+      for (const c of choices[idx].consts) {
+        env.set(choices[idx].varName, c);
+        iter(idx + 1, env);
+      }
+      env.delete(choices[idx].varName);
+    };
+    iter(0, new Map());
+  }
+  return out;
+}
+
+function substitutePattern(pt: PatternTerm, env: Map<string, string>): PatternTerm {
+  if (pt.kind === "variable") {
+    const c = env.get(pt.name);
+    if (c === undefined) return pt;
+    return { kind: "term", ctor: c, children: [], line: pt.line, col: pt.col };
+  }
+  return {
+    kind: "term",
+    ctor: pt.ctor,
+    children: pt.children.map((ch) => substitutePattern(ch, env)),
+    line: pt.line,
+    col: pt.col,
+  };
 }
 
 // ---------------------------------------------------------------------------

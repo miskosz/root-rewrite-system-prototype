@@ -5,6 +5,7 @@
     { "include": "#comment" },
     { "include": "#section-keyword" },
     { "include": "#declaration-keyword" },
+    { "include": "#control-keyword" },
     { "include": "#arrow" },
     { "include": "#typevar" },
     { "include": "#constructor" },
@@ -26,6 +27,10 @@
     "declaration-keyword": {
       "match": "\\b(const|type|alias)\\b",
       "name": "keyword.other.declaration.rrs3"
+    },
+    "control-keyword": {
+      "match": "\\b(for|in)\\b",
+      "name": "keyword.control.rrs3"
     },
     "arrow": {
       "name": "keyword.operator.rrs3",

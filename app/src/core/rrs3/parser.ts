@@ -6,6 +6,7 @@ import type {
   GenericProgram,
   GenericSignature,
   GenericRule,
+  ForBinding,
   PatternTerm,
   TypeRef,
 } from "./generic-ir";
@@ -229,13 +230,44 @@ class Parser {
       const t = this.peek()!;
       if (t.kind === "KW" && (t.value === "signature" || t.value === "input" || t.value === "rules")) break;
 
+      const expansions = this.parseForBindings();
       const left = this.parsePatternTerm();
       this.expect("ARROW");
       const right = this.parsePatternTerm();
-      rules.push({ left, right });
+      rules.push({ left, right, expansions });
     }
 
     return rules;
+  }
+
+  /** Parse zero or more `for v in Alias (, v in Alias)*:` prefixes before a rule. */
+  private parseForBindings(): ForBinding[] {
+    const bindings: ForBinding[] = [];
+    while (this.at("KW", "for")) {
+      this.advance();
+      bindings.push(this.parseOneForBinding());
+      while (this.at("COMMA")) {
+        this.advance();
+        bindings.push(this.parseOneForBinding());
+      }
+      this.expect("COLON");
+    }
+    return bindings;
+  }
+
+  private parseOneForBinding(): ForBinding {
+    const varTok = this.expect("IDENT");
+    if (!isVariable(varTok.value)) {
+      this.err(`'for' binder '${varTok.value}' must be a variable (lowercase)`, varTok.line, varTok.col);
+    }
+    this.expect("KW", "in");
+    const aliasTok = this.expect("IDENT");
+    return {
+      varName: varTok.value,
+      aliasName: aliasTok.value,
+      line: varTok.line,
+      col: varTok.col,
+    };
   }
 
   // -- terms ----------------------------------------------------------------

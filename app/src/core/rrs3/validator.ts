@@ -29,7 +29,7 @@ export function validateGeneric(prog: GenericProgram): void {
   // Rule structural checks (linearity, RHS-vars-subset-of-LHS-vars,
   // LHS root not bare variable).
   for (let i = 0; i < prog.rules.length; i++) {
-    validateGenericRule(prog.rules[i], i);
+    validateGenericRule(prog.rules[i], i, sig);
   }
 }
 
@@ -63,13 +63,34 @@ function validateTypeRef(
   }
 }
 
-function validateGenericRule(rule: GenericRule, index: number): void {
+function validateGenericRule(rule: GenericRule, index: number, sig: GenericSignature): void {
+  // Validate `for` expansions: alias must exist, be an alias, and its body
+  // must be a finite, non-empty set of zero-arity, non-generic constants.
+  const expandedVars = new Set<string>();
+  for (const b of rule.expansions) {
+    if (expandedVars.has(b.varName)) {
+      throw new ParseError(
+        `Rule ${index + 1}: 'for' binder '${b.varName}' is bound twice`,
+        b.line, b.col,
+      );
+    }
+    expandedVars.add(b.varName);
+    const consts = resolveFiniteConstAlias(b.aliasName, sig);
+    if (consts.length === 0) {
+      throw new ParseError(
+        `Rule ${index + 1}: 'for ${b.varName} in ${b.aliasName}' — '${b.aliasName}' is not a finite const alias`,
+        b.line, b.col,
+      );
+    }
+  }
+
   const leftCounts = new Map<string, number>();
   const rightCounts = new Map<string, number>();
   countPatternVars(rule.left, leftCounts);
   countPatternVars(rule.right, rightCounts);
 
   for (const [v, c] of leftCounts) {
+    if (expandedVars.has(v)) continue;
     if (c > 1) {
       throw new ParseError(
         `Rule ${index + 1}: variable '${v}' appears ${c} times on left side (must be linear)`,
@@ -78,6 +99,7 @@ function validateGenericRule(rule: GenericRule, index: number): void {
     }
   }
   for (const [v, c] of rightCounts) {
+    if (expandedVars.has(v)) continue;
     if (c > 1) {
       throw new ParseError(
         `Rule ${index + 1}: variable '${v}' appears ${c} times on right side (must be linear)`,
@@ -96,9 +118,42 @@ function validateGenericRule(rule: GenericRule, index: number): void {
     }
   }
 
+  // Every `for` binder must actually appear on the LHS.
+  for (const b of rule.expansions) {
+    if (!leftCounts.has(b.varName)) {
+      throw new ParseError(
+        `Rule ${index + 1}: 'for' binder '${b.varName}' does not appear on left side`,
+        b.line, b.col,
+      );
+    }
+  }
+
   if (rule.left.kind === "variable") {
     throw new ParseError(`Rule ${index + 1}: left side cannot be a bare variable`, 0, 0);
   }
+}
+
+/**
+ * Resolve an alias name to the ordered list of its constant members, if the
+ * alias body consists only of zero-arity, non-generic, non-alias constants.
+ * Returns [] if the alias does not exist or is not a finite const alias.
+ */
+export function resolveFiniteConstAlias(
+  aliasName: string,
+  sig: GenericSignature,
+): string[] {
+  const decl = sig.get(aliasName);
+  if (!decl || !decl.isAlias) return [];
+  if (decl.params.length > 0) return [];
+  const members: string[] = [];
+  for (const ref of decl.childTypes[0]) {
+    if (ref.kind !== "concrete" || ref.args.length > 0) return [];
+    const memberDecl = sig.get(ref.name);
+    if (!memberDecl) return [];
+    if (!memberDecl.isConst) return [];
+    members.push(ref.name);
+  }
+  return members;
 }
 
 function countPatternVars(pt: PatternTerm, counts: Map<string, number>): void {
