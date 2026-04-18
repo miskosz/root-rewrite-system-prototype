@@ -1,0 +1,28 @@
+{
+  "name": "rrs2",
+  "displayName": "RRS2 Language Support",
+  "description": "Syntax highlighting for Root Rewrite System 2 (.rrs2) files",
+  "version": "0.1.0",
+  "publisher": "rrs",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": ["Programming Languages"],
+  "contributes": {
+    "languages": [
+      {
+        "id": "rrs2",
+        "aliases": ["RRS2", "Root Rewrite System 2"],
+        "extensions": [".rrs2"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "rrs2",
+        "scopeName": "source.rrs2",
+        "path": "./syntaxes/rrs2.tmLanguage.json"
+      }
+    ]
+  }
+}

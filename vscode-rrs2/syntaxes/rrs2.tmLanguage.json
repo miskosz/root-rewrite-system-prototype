@@ -1,0 +1,51 @@
+{
+"name": "RRS2",
+  "scopeName": "source.rrs2",
+  "patterns": [
+    { "include": "#comment" },
+    { "include": "#section-keyword" },
+    { "include": "#declaration-keyword" },
+    { "include": "#arrow" },
+    { "include": "#typevar" },
+    { "include": "#constructor" },
+    { "include": "#variable" },
+    { "include": "#operator" }
+  ],
+  "repository": {
+    "comment": {
+      "name": "comment.line.number-sign.rrs2",
+      "match": "#.*$"
+    },
+    "section-keyword": {
+      "match": "\\b(signature|rules|input)\\s*(:)",
+      "captures": {
+        "1": { "name": "keyword.control.section.rrs2" },
+        "2": { "name": "punctuation.separator.rrs2" }
+      }
+    },
+    "declaration-keyword": {
+      "match": "\\b(const|type|alias)\\b",
+      "name": "keyword.other.declaration.rrs2"
+    },
+    "arrow": {
+      "name": "keyword.operator.rrs2",
+      "match": "->"
+    },
+    "typevar": {
+      "name": "variable.other.typevar.rrs2",
+      "match": "'[a-z][A-Za-z0-9_]*"
+    },
+    "constructor": {
+      "name": "entity.name.type.constructor.rrs2",
+      "match": "\\b[A-Z][A-Za-z0-9_]*\\b"
+    },
+    "variable": {
+      "name": "variable.other.rrs2",
+      "match": "\\b[a-z_][A-Za-z0-9_]*\\b"
+    },
+    "operator": {
+      "name": "punctuation.separator.rrs2",
+      "match": "[|:,<]|(?<!-)>"
+    }
+  }
+}
