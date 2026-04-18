@@ -1,0 +1,1013 @@
+# 8-id 8-var URRS implementation
+
+signature:
+
+    const I0
+    const I1
+    const I2
+    const I3
+    const I4
+    const I5
+    const I6
+    const I7
+    alias Z8 = I0 | I1 | I2 | I3 | I4 | I5 | I6 | I7
+
+    type Var:
+        Z8
+
+    type IdTerm:
+        id: Z8
+        children: List<Term>
+    alias Term: IdTerm | Var
+
+    const Nil
+    type L<'t>:
+        head: 't
+        tail: List<'t>
+    alias List<'t>: L<'t> | Nil
+
+    # ---
+
+    type Bind:
+        var: Var
+        term: Term
+
+    type Rule:
+        lhs: Term
+        rhs: Term
+    
+    type RunRRS:
+        rules_: List<Rule>
+        input_: Term
+    type RunRRSOut:
+        term: Term
+    const RunRRS2
+
+    # ---
+
+    type Runtime:
+        call_stack: List<CallType>
+        value_stack: List<ValueType>
+    alias CallType: ListMerge<Bind>
+    alias ValueType: ListMergeOut<Bind>
+
+    type ListMerge<'t>:
+        List<'t>
+        List<'t>
+    type ListMergeOut<'t>:
+        List<'t>
+
+    # type Match:
+    #     term: Term
+    #     varterm: Term
+    # type MatchOutFalse:
+    #     term: Term
+    #     varterm: Term
+    # type MatchOutTrue:
+    #     binds: List<Bind>
+    #     term: Term  # Skeleton, will match varterm
+    #     varterm: Term
+    # type Match1:
+    #     t: Term
+    # type Match2:
+    #     t: Term
+    #     id1: Nat
+    # type MatchCombine1:
+    #     ch1: List<Term>
+    #     ch2: List<Term>
+    # type MatchCombine2:
+    #     id1: Id
+    #     id2: Id
+
+    # type MatchChildren:
+    #     ch1: List<Term>
+    #     ch2: List<Term>
+    # type MatchChildrenOutFalse:
+    #     ch1: List<Term>
+    #     ch2: List<Term>
+    # type MatchChildrenOutTrue:
+    #     binds: List<Bind>
+    #     ch1: List<Term>  # Skeleton, will match ch2
+    #     ch2: List<Term>
+    # type MatchChildren2:
+    #     tail1: List<Term>
+    #     tail2: List<Term>
+    # type MatchChildren3:
+    #     head_binds: List<Bind>
+    #     h1: Term  # Skeleton, will match h2
+    #     h2: Term
+    # type MatchChildren4:
+    #     h1: Term  # Skeleton
+    #     h2: Term
+    #     tail1: List<Term>  # Skeleton
+    #     tail2: List<Term>
+    # type MatchChildren5:
+    #     h2: Term
+    #     tail1: List<Term>  # Skeleton
+    #     tail2: List<Term>
+
+    # type Substitute:
+    #     binds: List<Bind>
+    #     varterm: Term
+    # type SubstituteOut:
+    #     unused_binds: List<Bind>
+    #     varterm: Term
+    # const Substitute2
+    # type Substitute3:
+    #     id: Id
+    #     chtail: List<Term>
+    # type Substitute4:
+    #     id: Id
+    #     ch1: Term
+
+    # type FindBind:
+    #     binds: List<Bind>
+    #     var: Var
+    # type FindBindOutNoMatch:
+    #     binds: List<Bind>
+    #     var: Var
+    # type FindBindOutMatch:
+    #     binds: List<Bind>
+    #     var: Var
+    #     match: Bind
+    # type FindBind2:
+    #     term: Term
+    #     btail: List<Bind>
+    # type FindBind3:
+    #     id1: Nat
+    #     term: Term
+
+    # # ---
+
+    # type ApplyFirstRule:
+    #     rules_: List<Rule>
+    #     term: Term
+    # type ApplyFirstRuleMatch:
+    #     rules_: List<Rule>
+    #     newterm: Term
+    # type ApplyFirstRuleNoMatch:
+    #     rules_: List<Rule>
+    #     term: Term
+    # type ApplyFirstRule2:
+    #     rhs: Term
+    #     rtail: List<Rule>
+    # type ApplyFirstRule3:
+    #     rtail: List<Rule>
+    #     binds: List<Bind>
+    #     lhs: Term
+    # type ApplyFirstRule4:
+    #     rtail: List<Rule>
+    #     lhs: Term
+    #     rhs: Term
+    # type ApplyFirstRule5:
+    #     lhs: Term
+    #     rhs: Term
+
+    # type CopyTerm:
+    #     t: Term
+    # type CopyTermOut:
+    #     t1: Term
+    #     t2: Term
+    # const CopyTerm2
+    # const CopyTerm3
+
+    # type CopyTerms:
+    #     terms: List<Term>
+    # type CopyTermsOut:
+    #     terms1: List<Term>
+    #     terms2: List<Term>
+    # const CopyTerms2
+
+rules:
+    # NatEq
+    # NatEq(E, E) = NatEqOut(NatEq(E, E), True)
+    Runtime(L(NatEq(E, E), cstack), vstack) ->
+        Runtime(cstack, L(NatEqOut(NatEq(E, E), True), vstack))
+    # NatEq(S(x), S(y)) =
+    # | NatEq(a, b), out = NatEq(x, y)
+    # | return NatEqOut(NatEq(S(a), S(b)), out)
+    Runtime(L(NatEq(S(x), S(y)), cstack), vstack) ->
+        Runtime(
+            L(NatEq(x, y),
+            L(NatEqCombine,
+                cstack)),
+            vstack
+        )
+    Runtime(
+        L(NatEqCombine, cstack),
+        L(NatEqOut(NatEq(x, y), val), vstack)
+    ) ->
+        Runtime(cstack, L(NatEqOut(NatEq(S(x), S(y)), val), vstack))
+    # NatEq(_x, _y) = NatEqOut(NatEq(_x, _y), False)
+    Runtime(L(NatEq(x, y), cstack), vstack) ->
+        Runtime(cstack, L(NatEqOut(NatEq(x, y), False), vstack))
+
+    # NatCopy
+    # NatCopy(E) = NatCopyOut(E, E)
+    Runtime(L(NatCopy(E), cstack), vstack) ->
+        Runtime(cstack, L(NatCopyOut(E, E), vstack))
+    # NatCopy(S(x)) =
+    # | a, b = NatCopy(x)
+    # | return S(a), S(b)
+    Runtime(L(NatCopy(S(x)), cstack), vstack) ->
+        Runtime(
+            L(NatCopy(x),
+            L(NatCopyCombine,
+                cstack)),
+            vstack
+        )
+    Runtime(
+        L(NatCopyCombine, cstack),
+        L(NatCopyOut(x, y), vstack)
+    ) ->
+        Runtime(cstack, L(NatCopyOut(S(x), S(y)), vstack))
+
+    # ListMerge
+    # ListMerge(Nil, l2) = ListMergeOut(l2)
+    Runtime(
+        L(ListMerge(Nil, l2), cstack), vstack
+    ) ->
+        Runtime(
+            cstack, L(ListMergeOut(l2), vstack)
+        )
+    # ListMerge(head :: tail, l2) = ListMerge(tail, head :: l2)
+    Runtime(
+        L(ListMerge(L(head, tail), l2), cstack), vstack
+    ) ->
+        Runtime(
+            L(ListMerge(tail, L(head, l2)), cstack), vstack
+        )
+
+
+    # Match
+    # Match(t, Var(id)) = MatchOutTrue([Bind(Var(id), t)], Var(id), Var(id))
+    Runtime(
+        L(Match(t, Var(id)), cstack), vstack
+    ) ->
+        Runtime(
+            L(NatCopy(id),
+            L(Match1(t),
+                cstack)),
+            vstack
+        )
+    Runtime(
+        L(Match1(t), cstack),
+        L(NatCopyOut(id1, id2), vstack)
+    ) ->
+        Runtime(
+            L(NatCopy(id2),
+            L(Match2(t, id1),
+                cstack)),
+            vstack
+        )
+    Runtime(
+        L(Match2(t, id1), cstack),
+        L(NatCopyOut(id2, id3), vstack)
+    ) ->
+        Runtime(
+            cstack,
+            L(
+                MatchOutTrue(L(Bind(Var(id1), t), Nil), Var(id2), Var(id3)),
+                vstack
+            )
+        )
+    # Match(
+    #     IdTerm(Id(id1), ch1),
+    #     IdTerm(Id(id2), ch2)
+    # ) =
+    # | NatEq(id1, id2), out = NatEq(id1, id2)
+    # | if (out == False):
+    # |     return MatchOutFalse(
+    # |         IdTerm(Id(id1), ch1),
+    # |         IdTerm(Id(id2), ch2)
+    # |     )
+    # | out = MatchChildren(ch1, ch2)
+    # | match out:
+    # |     case MatchChildrenFalse(ch1, ch2):
+    # |         return MatchOutFalse(...)
+    # |     case MatchChildrenTrue(binds, ch1, ch2):
+    # |         return MatchOutTrue(
+    # |             binds,
+    # |             IdTerm(Id(id1), ch1),
+    # |             IdTerm(Id(id2), ch2)
+    # |         )
+    Runtime(
+        L(Match(IdTerm(Id(id1), ch1), IdTerm(Id(id2), ch2)), cstack),
+        vstack
+    ) ->
+        Runtime(
+            L(NatEq(id1, id2),
+            L(MatchCombine1(ch1, ch2),
+                cstack)),
+            vstack
+        )
+    Runtime(
+        L(MatchCombine1(ch1, ch2), cstack),
+        L(NatEqOut(NatEq(id1, id2), False), vstack)
+    ) ->
+        Runtime(
+            cstack,
+            L(
+                MatchOutFalse(IdTerm(Id(id1), ch1), IdTerm(Id(id2), ch2)),
+                vstack
+            )
+        )
+    Runtime(
+        L(MatchCombine1(ch1, ch2), cstack),
+        L(NatEqOut(NatEq(id1, id2), True), vstack)
+    ) ->
+        Runtime(
+            L(MatchChildren(ch1, ch2),
+            L(MatchCombine2(id1, id2),
+                cstack)),
+            vstack
+        )
+    Runtime(
+        L(MatchCombine2(id1, id2), cstack),
+        L(MatchChildrenOutFalse(ch1, ch2), vstack)
+    ) ->
+        Runtime(
+            cstack,
+            L(MatchOutFalse(IdTerm(Id(id1), ch1), IdTerm(Id(id2), ch2)),
+                vstack)
+        )
+    Runtime(
+        L(MatchCombine2(id1, id2), cstack),
+        L(MatchChildrenOutTrue(binds, ch1, ch2), vstack)
+    ) ->
+        Runtime(
+            cstack,
+            L(MatchOutTrue(binds, IdTerm(Id(id1), ch1), IdTerm(Id(id2), ch2)),
+                vstack)
+        )
+    # Match(_x, _y) = MatchOut(Match(_x, _y))
+    Runtime(
+        L(Match(x, y), cstack), vstack
+    ) ->
+        Runtime(
+            cstack,
+            L(MatchOutFalse(x, y), vstack)
+        )
+
+    # MatchChildren
+    # MatchChildren(Nil, Nil) = MatchChildrenOutTrue(Nil, Nil, Nil)
+    Runtime(
+        L(MatchChildren(Nil, Nil), cstack), vstack
+    ) ->
+        Runtime(cstack, L(MatchChildrenOutTrue(Nil, Nil, Nil), vstack))
+    # MatchChildren(h1 :: tail1, h2 :: tail2) =
+    # | out = Match(h1, h2)
+    # | if let MatchOutFalse(h1, h2) = out:
+    # |     return MatchChildrenOutFalse(h1 :: tail1, h2 :: tail2)
+    # | MatchOutTrue(head_binds, h1, h2) = out
+    # | out2 = MatchChildren(tail1, tail2)
+    # | if let MatchChildrenOutFalse(tail1, tail2) = out:
+    # |     h1 = Substitute(head_binds, h1)
+    # |     return MatchChildrenOutFalse(h1 :: tail1, h2 :: tail2)
+    # | MatchChildrenOutTrue(tail_binds, tail1, tail2) = out2
+    # | binds = ListMerge(head_binds, tail_binds)
+    # | return MatchChildrenOutTrue(binds, h1 :: tail1, h2 :: tail2)
+    Runtime(
+        L(MatchChildren(L(h1, tail1), L(h2, tail2)),
+            cstack),
+        vstack
+    ) ->
+        Runtime(
+            L(Match(h1, h2),
+            L(MatchChildren2(tail1, tail2),
+                cstack)),
+            vstack
+        )
+    Runtime(
+        L(MatchChildren2(tail1, tail2), cstack),
+        L(MatchOutFalse(h1, h2), vstack)
+    ) ->
+        Runtime(
+            cstack,
+            L(MatchChildrenOutFalse(L(h1, tail1), L(h2, tail2)),
+                vstack)
+        )
+    Runtime(
+        L(MatchChildren2(tail1, tail2), cstack),
+        L(MatchOutTrue(head_binds, h1, h2), vstack)
+    ) ->
+        Runtime(
+            L(MatchChildren(tail1, tail2),
+            L(MatchChildren3(head_binds, h1, h2),
+                cstack)),
+            vstack
+        )
+    # - False branch
+    Runtime(
+        L(MatchChildren3(head_binds, h1, h2), cstack),
+        L(MatchChildrenOutFalse(tail1, tail2), vstack)
+    ) ->
+        Runtime(
+            L(Substitute(head_binds, h1),
+            L(MatchChildren5(h2, tail1, tail2),
+                cstack)),
+            vstack
+        )
+    Runtime(
+        L(MatchChildren5(h2, tail1, tail2), cstack),
+        L(SubstituteOut(unused_binds, h1), vstack)
+    ) ->
+        Runtime(
+            cstack,
+            L(MatchChildrenOutFalse(L(h1, tail1), L(h2, tail2)),
+                vstack)
+        )
+    # - True branch    
+    Runtime(
+        L(MatchChildren3(head_binds, h1, h2), cstack),
+        L(MatchChildrenOutTrue(tail_binds, tail1, tail2), vstack)
+    ) ->
+        Runtime(
+            L(ListMerge(head_binds, tail_binds),
+            L(MatchChildren4(h1, h2, tail1, tail2),
+                cstack)),
+            vstack
+        )
+    Runtime(
+        L(MatchChildren4(h1, h2, tail1, tail2), cstack),
+        L(ListMergeOut(binds), vstack)
+    ) ->
+        Runtime(
+            cstack,
+            L(MatchChildrenOutTrue(binds, L(h1, tail1), L(h2, tail2)),
+                vstack)
+        )
+
+    # FindBind
+    # FindBind(Nil, var) = FindBindNoMatch(nil, var)
+    Runtime(
+        L(FindBind(Nil, var), cstack), vstack
+    ) ->
+        Runtime(
+            cstack,
+            L(FindBindOutNoMatch(Nil, var), vstack)
+        )
+    # FindBind(L(bind1, btail), Var(id2)) =
+    # | Bind(Var(id1), term) = bind1
+    # | id1, id2, out = NatEq(id1, id2)
+    # | if out == True:
+    # |     return FindBindOutMatch(btail, var, term)
+    # | match FindBind(btail, Var(id2)):
+    # |     case FindBindOutNoMatch(btail, Var(id2)):
+    # |         return FindBindOutNoMatch(bind1 :: btail, Var(id2))
+    # |     case FindBindOutMatch(btail, Var(id2), match):
+    # |         return FindBindOutMatch(bind1 :: btail, Var(id2), match)
+    Runtime(
+        L(FindBind(L(Bind(Var(id1), term), btail), Var(id2)),
+            cstack),
+        vstack
+    ) ->
+        Runtime(
+            L(NatEq(id1, id2),
+            L(FindBind2(term, btail),
+                cstack)),
+            vstack
+        )
+    Runtime(
+        L(FindBind2(term, btail), cstack),
+        L(NatEqOut(NatEq(id1, id2), True), vstack)
+    ) ->
+        Runtime(
+            cstack,
+            L(FindBindOutMatch(btail, Var(id2), term),
+                vstack)
+        )
+    Runtime(
+        L(FindBind2(term, btail), cstack),
+        L(NatEqOut(NatEq(id1, id2), False), vstack)
+    ) ->
+        Runtime(
+            L(FindBind(btail, Var(id2)),
+            L(FindBind3(id1, term),
+                cstack)),
+            vstack
+        )
+    Runtime(
+        L(FindBind3(id1, term), cstack),
+        L(FindBindOutNoMatch(btail, Var(id2)), vstack)
+    ) ->
+        Runtime(
+            cstack,
+            L(
+                FindBindOutNoMatch(
+                    L(Bind(id1, term), btail),
+                    Var(id2)
+                ),
+                vstack
+            )
+        )
+    Runtime(
+        L(FindBind3(id1, term), cstack),
+        L(FindBindOutMatch(btail, Var(id2), match), vstack)
+    ) ->
+        Runtime(
+            cstack,
+            L(
+                FindBindOutMatch(
+                    L(Bind(id1, term), btail),
+                    Var(id2),
+                    match
+                ),
+                vstack
+            )
+        )
+
+    # Substitute
+    # Substitute(binds, Var(id)) = 
+    # | out = FindBind(binds, Var(id))
+    # | if let FindBindOutMatch(binds, Var(id), match):
+    # |     return SubstituteOut(binds, match)
+    # | else:
+    # |     return SubstituteOut(binds, Var(id))
+    Runtime(
+        L(Substitute(binds, Var(id)),
+            cstack),
+        vstack
+    ) ->
+        Runtime(
+            L(FindBind(binds, Var(id)),
+            L(Substitute2,
+                cstack)),
+            vstack
+        )
+    Runtime(
+        L(Substitute2, cstack),
+        L(FindBindOutNoMatch(binds, Var(id)), vstack)
+    ) ->
+        Runtime(
+            cstack,
+            L(SubstituteOut(binds, Var(id)),
+                vstack)
+        )
+    Runtime(
+        L(Substitute2, cstack),
+        L(FindBindOutMatch(binds, Var(id), match), vstack)
+    ) ->
+        Runtime(
+            cstack,
+            L(SubstituteOut(binds, match),
+                vstack)
+        )
+    # Substitute(binds, IdTerm(id, Nil)) = SubstituteOut(binds, IdTerm(id, Nil))
+    Runtime(
+        L(Substitute(binds, IdTerm(id, Nil)), cstack),
+        vstack
+    ) ->
+        Runtime(
+            cstack,
+            L(SubstituteOut(binds, IdTerm(id, Nil)), vstack)
+        )
+    # Substitute(binds, IdTerm(id, ch1 :: chtail)) =
+    # | binds, sub_ch1 = Substitute(binds, ch1)
+    # | # Slight hack, we could also have SubstistuteMany that takes List<Term>
+    # | binds, IdTerm(Id(E), sub_chtail) = Substitute(binds, IdTerm(Id(E), chtail))
+    # | return SubstituteOut(binds, IdTerm(id, sub_ch1, sub_chtail))
+    Runtime(
+        L(Substitute(binds, IdTerm(id, L(ch1, chtail))), cstack),
+        vstack
+    ) ->
+        Runtime(
+            L(Substitute(binds, ch1),
+            L(Substitute3(id, chtail),
+                cstack)),
+            vstack
+        )
+    Runtime(
+        L(Substitute3(id, chtail), cstack),
+        L(SubstituteOut(binds, ch1), vstack)
+    ) ->
+        Runtime(
+            L(Substitute(binds, IdTerm(Id(E), chtail)),
+            L(Substitute4(id, ch1),
+                cstack)),
+            vstack
+        )
+    Runtime(
+        L(Substitute4(id, ch1), cstack),
+        L(SubstituteOut(binds, IdTerm(Id(E), chtail)), vstack)
+    ) ->
+        Runtime(
+            cstack,
+            L(SubstituteOut(binds, IdTerm(id, L(ch1, chtail))), vstack)
+        )
+
+    # ----------------------------------------
+    # ----------------------------------------    
+
+    # RunRRS
+    # RunRRS(Nil, t) = RunRRSOut(t)
+    Runtime(
+        L(RunRRS(Nil, t), cstack),
+        vstack
+    ) ->
+        Runtime(
+            cstack,
+            L(RunRRSOut(t), vstack)
+        )
+    # RunRRS(rules, term) =
+    # | match ApplyFirstRule(rules, term)
+    # |     case ApplyFirstRuleMatch(rules, newterm):
+    # |         return_call RunRRS(rules, newterm)
+    # |     case ApplyFirstRuleNoMatch(rules, term):
+    # |         return RunRRSStop(term)
+    Runtime(
+        L(RunRRS(rules_, term), cstack),
+        vstack
+    ) ->
+        Runtime(
+            L(ApplyFirstRule(rules_, term),
+            L(RunRRS2,
+                cstack)),
+            vstack
+        )
+    Runtime(
+        L(RunRRS2, cstack),
+        L(ApplyFirstRuleMatch(rules_, newterm), vstack)
+    ) ->
+        Runtime(
+            L(RunRRS(rules_, newterm), cstack),
+            vstack
+        )
+    Runtime(
+        L(RunRRS2, cstack),
+        L(ApplyFirstRuleNoMatch(rules_, term), vstack)
+    ) ->
+        Runtime(
+            cstack,
+            L(RunRRSOut(term), vstack)
+        )
+
+    # type ApplyFirstRule:
+    #     rules_: List<Rule>
+    #     term: Term
+    # type ApplyFirstRuleMatch:
+    #     rules_: List<Rule>
+    #     newterm: Term
+    # type ApplyFirstRuleNoMatch:
+    #     rules_: List<Rule>
+    #     term: Term
+
+    # ApplyFirstRule
+    # ApplyFirstRule(Nil, term) = ApplyFirstRuleNoMatch(Nil, term)
+    Runtime(
+        L(ApplyFirstRule(Nil, term), cstack),
+        vstack
+    ) ->
+        Runtime(
+            cstack,
+            L(ApplyFirstRuleNoMatch(Nil, term), vstack)
+        )
+    # ApplyFirstRule(Rule(lhs, rhs) :: rtail, term) = 
+    # | out = Match(term, lhs):
+    # | if let MatchOutTrue(binds, varterm, lhs):
+    # |     rhs, rhs_copy = CopyTerm(rhs). <-- Potrebujem kopiu rhs
+    # |     newterm = Substitute(binds, rhs_copy)
+    # |     return ApplyFirstRuleMatch(
+    # |         Rule(lhs, rhs) :: rtail,
+    # |         newterm
+    # |     )
+    # | MatchOutFalse(term, lhs) = out
+    # | match ApplyFirstRule(rtail, term)
+    # |     case ApplyFirstRuleMatch(rtail, newterm):
+    # |         return ApplyFirstRuleMatch(Rule(lhs, rhs) ::rtail, newterm)
+    # |     case ApplyFirstRuleNoMatch(rtail, term):
+    # |         return ApplyFirstRuleNoMatch(Rule(lhs, rhs) ::rtail, term)
+    Runtime(
+        L(ApplyFirstRule(L(Rule(lhs, rhs), rtail), term), cstack),
+        vstack
+    ) ->
+        Runtime(
+            L(Match(term, lhs),
+            L(ApplyFirstRule2(rhs, rtail),
+                cstack)),
+            vstack
+        )
+    # - True branch
+    Runtime(
+        L(ApplyFirstRule2(rhs, rtail), cstack),
+        L(MatchOutTrue(binds, varterm, lhs), vstack)
+    ) ->
+        Runtime(
+            L(CopyTerm(rhs),
+            L(ApplyFirstRule3(rtail, binds, lhs),
+                cstack)),
+            vstack
+        )
+    Runtime(
+        L(ApplyFirstRule3(rtail, binds, lhs), cstack),
+        L(CopyTermOut(rhs, rhs_copy), vstack)
+    ) ->
+        Runtime(
+            L(Substitute(binds, rhs_copy),
+            L(ApplyFirstRule4(rtail, lhs, rhs),
+                cstack)),
+            vstack
+        )
+    Runtime(
+        L(ApplyFirstRule4(rtail, lhs, rhs), cstack),
+        L(SubstituteOut(unused_binds, newterm), vstack)
+    ) ->
+        Runtime(
+            cstack,
+            L(ApplyFirstRuleMatch(L(Rule(lhs, rhs), rtail), newterm),
+                vstack)
+        )
+    # - False branch
+    Runtime(
+        L(ApplyFirstRule2(rhs, rtail), cstack),
+        L(MatchOutFalse(term, lhs), vstack)
+    ) ->
+        Runtime(
+            L(ApplyFirstRule(rtail, term),
+            L(ApplyFirstRule5(lhs, rhs),
+                cstack)),
+            vstack
+        )
+    Runtime(
+        L(ApplyFirstRule5(lhs, rhs), cstack),
+        L(ApplyFirstRuleMatch(rtail, newterm), vstack)
+    ) ->
+        Runtime(
+            cstack,
+            L(ApplyFirstRuleMatch(L(Rule(lhs, rhs), rtail), newterm),
+                vstack)
+        )
+    Runtime(
+        L(ApplyFirstRule5(lhs, rhs), cstack),
+        L(ApplyFirstRuleNoMatch(rtail, term), vstack)
+    ) ->
+        Runtime(
+            cstack,
+            L(ApplyFirstRuleNoMatch(L(Rule(lhs, rhs), rtail), term),
+                vstack)
+        )
+
+
+    # type CopyTerm:
+    #     t: Term
+    # type CopyTermOut:
+    #     t1: Term
+    #     t2: Term
+
+    # CopyTerm
+    # CopyTerm(Var(id)) = CopyTermOut(Var(id), Var(id))
+    Runtime(
+        L(CopyTerm(Var(id)), cstack),
+        vstack
+    ) ->
+        Runtime(
+            L(NatCopy(id),
+            L(CopyTerm2,
+                cstack)),
+            vstack
+        )
+    Runtime(
+        L(CopyTerm2, cstack),
+        L(NatCopyOut(id1, id2), vstack)
+    ) ->
+        Runtime(
+            cstack,
+            L(CopyTermOut(Var(id1), Var(id2)), vstack)
+        )
+    # CopyTerm(IdTerm(Id(id), ch)) = 
+    # | id1, id2 = NatCopy(id)
+    # | ch1, ch2 = CopyTerms(ch1)
+    # | return CopyTermOut(IdTerm(Id(id1), ch1), IdTerm(Id(id2), ch2))
+    Runtime(
+        L(CopyTerm(IdTerm(Id(id), ch)), cstack),
+        vstack
+    ) ->
+        Runtime(
+            L(NatCopy(id),
+            L(CopyTerms(ch),
+            L(CopyTerm3,
+                cstack))),
+            vstack
+        )
+    Runtime(
+        L(CopyTerm3,
+            cstack),
+        L(CopyTermsOut(ch1, ch2),
+        L(NatCopyOut(id1, id2),
+            vstack))
+    ) ->
+        Runtime(
+            cstack,
+            L(CopyTermOut(IdTerm(Id(id1), ch1), IdTerm(Id(id2), ch2)), vstack)
+        )
+
+    # CopyTerms
+    # CopyTerms(Nil) = CopyTermsOut(Nil, Nil)
+    Runtime(
+        L(CopyTerms(Nil), cstack),
+        vstack
+    ) ->
+        Runtime(
+            cstack,
+            L(CopyTermsOut(Nil, Nil), vstack)
+        )
+    # CopyTerms(t :: ttail) = |
+    # | t1, t2 = CopyTerm(t)
+    # | ttail1, ttail2 = CopyTerms(ttail)
+    # | return CopyTerms(t1 :: ttail1, t2 :: ttail2)
+    Runtime(
+        L(CopyTerms(L(t, ttail)), cstack),
+        vstack
+    ) ->
+        Runtime(
+            L(CopyTerm(t),
+            L(CopyTerms(ttail),
+            L(CopyTerms2,
+                cstack))),
+            vstack
+        )
+    Runtime(
+        L(CopyTerms2,
+            cstack),
+        L(CopyTermsOut(ttail1, ttail2),
+        L(CopyTermOut(t1, t2),
+            vstack))
+    ) ->
+        Runtime(
+            cstack,
+            L(CopyTermsOut(L(t1, ttail1), L(t2, ttail2)), vstack)
+        )
+
+
+input:
+    #Runtime(L(NatEq(S(S(E)), S(E)), Nil), Nil)
+
+    #Runtime(
+    #    L(
+    #        Match(
+    #            IdTerm(Id(S(E)), L(IdTerm(Id(E), Nil), Nil)),
+    #            Var(S(E))
+    #        ),
+    #        Nil
+    #    ),
+    #    Nil
+    #)
+
+    # Runtime(
+    #     L(
+    #         Match(
+    #             IdTerm(Id(S(E)), L(IdTerm(Id(E), Nil), Nil)),
+    #             IdTerm(Id(S(E)), L(IdTerm(Id(E), Nil), Nil))
+    #         ),
+    #         Nil
+    #     ),
+    #     Nil
+    # )
+
+    # Runtime(
+    #     L(
+    #         Match(
+    #             IdTerm(Id(S(E)), L(IdTerm(Id(E), Nil), Nil)),
+    #             IdTerm(Id(S(E)), L(Var(E), Nil))
+    #         ),
+    #         Nil
+    #     ),
+    #     Nil
+    # )
+    
+    # Runtime(Nil, Nil)
+
+    # Runtime(
+    #     L(
+    #         FindBind(
+    #             L(Bind(Var(S(S(E))), IdTerm(Id(E), Nil)),
+    #             L(Bind(Var(S(E)), IdTerm(Id(S(E)), Nil)),
+    #             L(Bind(Var(E), IdTerm(Id(S(S(E))), Nil)),
+    #                 Nil))),
+    #             Var(E)
+    #         ),
+    #         Nil
+    #     ),
+    #     Nil
+    # )
+
+    # Runtime(
+    #     L(
+    #         Substitute(
+    #             L(Bind(Var(S(S(E))), IdTerm(Id(E), Nil)),
+    #             L(Bind(Var(S(E)), IdTerm(Id(S(E)), Nil)),
+    #             L(Bind(Var(E), IdTerm(Id(S(S(E))), Nil)),
+    #                 Nil))),
+    #             IdTerm(
+    #                 Id(E),
+    #                 L(IdTerm(
+    #                     Id(S(E)),
+    #                     L(Var(S(S(E))),
+    #                     L(IdTerm(Id(E), Nil),
+    #                         Nil))
+    #                 ),
+    #                 L(Var(S(E)),
+    #                     Nil))
+    #             )
+    #         ),
+    #         Nil
+    #     ),
+    #     Nil
+    # )
+
+    # Runtime(
+    #     L(
+    #         Match(
+    #             IdTerm(
+    #                 Id(E),
+    #                 L(IdTerm(Id(E), Nil),
+    #                 L(IdTerm(Id(E), Nil),
+    #                     Nil))
+    #             ),
+    #             IdTerm(
+    #                 Id(E),
+    #                 L(Var(E),
+    #                 L(IdTerm(Id(S(E)), Nil),
+    #                     Nil))
+    #             )
+    #         ),
+    #         Nil
+    #     ),
+    #     Nil
+    # )
+
+    # Runtime(
+    #     L(
+    #         CopyTerm(
+    #             IdTerm(
+    #                 Id(E),
+    #                 L(Var(E),
+    #                 L(IdTerm(Id(S(E)), Nil),
+    #                     Nil))
+    #             )
+    #         ),
+    #         Nil
+    #     ),
+    #     Nil
+    # )
+
+    # URRS
+    # Sum
+    # Id(E) - Zero
+    # Id(S(E)) - Succ
+    # Id(S(S(E))) - Program
+    Runtime(
+        L(
+            RunRRS(
+                # rules
+                # Program(Succ(x), y) = Program(x, Succ(y))
+                L(Rule(
+                    IdTerm(
+                        Id(S(S(E))),
+                        L(IdTerm(
+                            Id(S(E)), L(Var(E), Nil)
+                        ),
+                        L(Var(S(E)),
+                            Nil))
+                    ),
+                    IdTerm(
+                        Id(S(S(E))),
+                        L(Var(E),
+                        L(IdTerm(
+                            Id(S(E)), L(Var(S(E)), Nil)
+                        ),
+                            Nil))
+                    )
+                ),
+                    Nil),
+                # term
+                # Program(Succ(Succ(Zero)), Succ(Zero))
+                IdTerm(
+                    Id(S(S(E))),
+                    L(IdTerm(
+                        Id(S(E)),
+                        L(IdTerm(
+                            Id(S(E)),
+                            L(IdTerm(
+                                Id(E),
+                                Nil
+                            ),
+                                Nil)
+                        ),
+                            Nil)
+                    ),
+                    L(IdTerm(
+                        Id(S(E)),
+                        L(IdTerm(
+                            Id(E),
+                            Nil
+                        ),
+                            Nil)
+                    ),
+                        Nil))
+                )
+            ),
+            Nil
+        ),
+        Nil  # vstack
+    )

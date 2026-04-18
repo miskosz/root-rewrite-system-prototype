@@ -1,0 +1,28 @@
+{
+  "name": "rrs3",
+  "displayName": "RRS3 Language Support",
+  "description": "Syntax highlighting for Root Rewrite System 3 (.rrs3) files",
+  "version": "0.1.0",
+  "publisher": "rrs",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": ["Programming Languages"],
+  "contributes": {
+    "languages": [
+      {
+        "id": "rrs3",
+        "aliases": ["RRS3", "Root Rewrite System 3"],
+        "extensions": [".rrs3"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "rrs3",
+        "scopeName": "source.rrs3",
+        "path": "./syntaxes/rrs3.tmLanguage.json"
+      }
+    ]
+  }
+}
