@@ -66,81 +66,54 @@ class Parser {
   // -- grammar --------------------------------------------------------------
 
   parse(): GenericProgram {
-    let signature: GenericSignature | undefined;
-    let rules: GenericRule[] | undefined;
+    const signature: GenericSignature = new Map();
+    const rules: GenericRule[] = [];
     let input: PatternTerm | undefined;
+
+    const checkDup = (name: string, line: number, col: number) => {
+      if (signature.has(name)) this.err(`Duplicate type '${name}'`, line, col);
+    };
 
     while (this.pos < this.tokens.length) {
       const t = this.peek()!;
-      if (t.kind === "KW" && t.value === "signature") {
-        if (signature) this.err("Duplicate 'signature' section", t.line, t.col);
+
+      if (t.kind === "KW" && t.value === "const") {
         this.advance();
-        this.expect("COLON");
-        signature = this.parseSignature();
-      } else if (t.kind === "KW" && t.value === "rules") {
+        const nameTok = this.expect("IDENT");
+        checkDup(nameTok.value, nameTok.line, nameTok.col);
+        signature.set(nameTok.value, { params: [], childTypes: [], isAlias: false, isConst: true });
+      } else if (t.kind === "KW" && t.value === "type") {
         this.advance();
+        const nameTok = this.expect("IDENT");
+        checkDup(nameTok.value, nameTok.line, nameTok.col);
+        const params = this.parseTypeParams();
         this.expect("COLON");
-        rules = this.parseRules();
+        const childTypes = this.parseChildTypeRefs();
+        signature.set(nameTok.value, { params, childTypes, isAlias: false, isConst: false });
+      } else if (t.kind === "KW" && t.value === "alias") {
+        this.advance();
+        const nameTok = this.expect("IDENT");
+        checkDup(nameTok.value, nameTok.line, nameTok.col);
+        const params = this.parseTypeParams();
+        this.expect("COLON");
+        const row = this.parseTypeRefList();
+        signature.set(nameTok.value, { params, childTypes: [row], isAlias: true, isConst: false });
+        this.aliasNames.add(nameTok.value);
       } else if (t.kind === "KW" && t.value === "input") {
-        if (input) this.err("Duplicate 'input' section", t.line, t.col);
+        if (input) this.err("Duplicate 'input' statement", t.line, t.col);
         this.advance();
         this.expect("COLON");
         input = this.parsePatternTerm();
+      } else if (t.kind === "KW" && (t.value === "rule" || t.value === "for")) {
+        rules.push(this.parseRule());
       } else {
         this.err(`Unexpected token '${t.value}'`, t.line, t.col);
       }
     }
 
-    if (!signature) this.err("Missing 'signature' section");
-    if (!rules) this.err("Missing 'rules' section");
-    if (!input) this.err("Missing 'input' section");
+    if (!input) this.err("Missing 'input:' statement");
 
     return { signature, rules, input };
-  }
-
-  // -- signature ------------------------------------------------------------
-
-  private parseSignature(): GenericSignature {
-    const sig: GenericSignature = new Map();
-    const aliasNames = new Set<string>();
-
-    const checkDup = (name: string) => {
-      if (sig.has(name)) this.err(`Duplicate type '${name}'`);
-    };
-
-    while (this.pos < this.tokens.length) {
-      const t = this.peek()!;
-      if (t.kind === "KW" && (t.value === "rules" || t.value === "input" || t.value === "signature")) break;
-
-      if (t.kind === "KW" && t.value === "const") {
-        this.advance();
-        const name = this.expect("IDENT").value;
-        checkDup(name);
-        sig.set(name, { params: [], childTypes: [], isAlias: false, isConst: true });
-      } else if (t.kind === "KW" && t.value === "type") {
-        this.advance();
-        const name = this.expect("IDENT").value;
-        checkDup(name);
-        const params = this.parseTypeParams();
-        this.expect("COLON");
-        const childTypes = this.parseChildTypeRefs();
-        sig.set(name, { params, childTypes, isAlias: false, isConst: false });
-      } else if (t.kind === "KW" && t.value === "alias") {
-        this.advance();
-        const name = this.expect("IDENT").value;
-        checkDup(name);
-        const params = this.parseTypeParams();
-        this.expect("COLON");
-        const row = this.parseTypeRefList();
-        sig.set(name, { params, childTypes: [row], isAlias: true, isConst: false });
-        aliasNames.add(name);
-      } else {
-        this.err(`Expected 'const', 'type', or 'alias', got '${t.value}'`, t.line, t.col);
-      }
-    }
-
-    this.aliasNames = aliasNames;
-    return sig;
   }
 
   /** Parse `< 'a, 'b, ... >` if present, else return []. */
@@ -204,12 +177,10 @@ class Parser {
       const t = this.peek()!;
       if (t.kind !== "IDENT" && t.kind !== "TYPEVAR") break;
 
+      const next = this.tokens[this.pos + 1];
+
       // Optional label "name:"
-      if (
-        t.kind === "IDENT" &&
-        this.pos + 1 < this.tokens.length &&
-        this.tokens[this.pos + 1].kind === "COLON"
-      ) {
+      if (t.kind === "IDENT" && next && next.kind === "COLON") {
         this.advance();
         this.advance();
       }
@@ -223,21 +194,13 @@ class Parser {
 
   // -- rules ----------------------------------------------------------------
 
-  private parseRules(): GenericRule[] {
-    const rules: GenericRule[] = [];
-
-    while (this.pos < this.tokens.length) {
-      const t = this.peek()!;
-      if (t.kind === "KW" && (t.value === "signature" || t.value === "input" || t.value === "rules")) break;
-
-      const expansions = this.parseForBindings();
-      const left = this.parsePatternTerm();
-      this.expect("ARROW");
-      const right = this.parsePatternTerm();
-      rules.push({ left, right, expansions });
-    }
-
-    return rules;
+  private parseRule(): GenericRule {
+    const expansions = this.parseForBindings();
+    this.expect("KW", "rule");
+    const left = this.parsePatternTerm();
+    this.expect("ARROW");
+    const right = this.parsePatternTerm();
+    return { left, right, expansions };
   }
 
   /** Parse zero or more `for v in Alias (, v in Alias)*:` prefixes before a rule. */

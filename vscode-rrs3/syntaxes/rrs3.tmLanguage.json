@@ -18,14 +18,14 @@
       "match": "#.*$"
     },
     "section-keyword": {
-      "match": "\\b(signature|rules|input)\\s*(:)",
+      "match": "\\b(input)\\s*(:)",
       "captures": {
         "1": { "name": "keyword.control.section.rrs3" },
         "2": { "name": "punctuation.separator.rrs3" }
       }
     },
     "declaration-keyword": {
-      "match": "\\b(const|type|alias)\\b",
+      "match": "\\b(const|type|alias|rule)\\b",
       "name": "keyword.other.declaration.rrs3"
     },
     "control-keyword": {

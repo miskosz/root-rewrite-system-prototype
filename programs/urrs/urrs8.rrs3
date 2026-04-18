@@ -1,7 +1,5 @@
 # 8-id 8-var URRS implementation
 
-signature:
-
     const I0
     const I1
     const I2
@@ -178,17 +176,16 @@ signature:
     #     terms2: List<Term>
     # const CopyTerms2
 
-rules:
     # ListMerge
     # ListMerge(Nil, l2) = ListMergeOut(l2)
-    Runtime(
+    rule Runtime(
         L(ListMerge(Nil, l2), cstack), vstack
     ) ->
         Runtime(
             cstack, L(ListMergeOut(l2), vstack)
         )
     # ListMerge(head :: tail, l2) = ListMerge(tail, head :: l2)
-    Runtime(
+    rule Runtime(
         L(ListMerge(L(head, tail), l2), cstack), vstack
     ) ->
         Runtime(
@@ -199,7 +196,7 @@ rules:
     # Match
     # Match(t, Var(id)) = MatchOutTrue([Bind(Var(id), t)], Var(id), Var(id))
     for id in Z8:
-    Runtime(
+    rule Runtime(
         L(Match(t, Var(id)), cstack), vstack
     ) ->
         Runtime(

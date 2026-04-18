@@ -37,6 +37,14 @@ export function initApp(): void {
   });
 
   const highlightCode = document.getElementById("highlight-code")!;
+  const lineNumbersContent = document.getElementById("line-numbers-content")!;
+
+  function updateLineNumbers() {
+    const count = sourceEl.value.split("\n").length;
+    let s = "";
+    for (let i = 1; i <= count; i++) s += (i === 1 ? "" : "\n") + i;
+    lineNumbersContent.textContent = s;
+  }
 
   const STORAGE_LANG_KEY = "rrs:lang";
   const sourceKey = (langId: string) => `rrs:source:${langId}`;
@@ -55,6 +63,7 @@ export function initApp(): void {
 
   sourceEl.value = loadSourceFor(currentLanguage);
   updateHighlight();
+  updateLineNumbers();
 
   const langRadioForCurrent = document.querySelector<HTMLInputElement>(
     `input[name="lang"][value="${currentLanguage.id}"]`,
@@ -63,14 +72,16 @@ export function initApp(): void {
 
   sourceEl.addEventListener("input", () => {
     updateHighlight();
+    updateLineNumbers();
     localStorage.setItem(sourceKey(currentLanguage.id), sourceEl.value);
   });
 
-  // Sync scroll between textarea and highlight layer
+  // Sync scroll between textarea, highlight layer, and line-number gutter
   const highlightLayer = document.getElementById("highlight-layer")!;
   sourceEl.addEventListener("scroll", () => {
     highlightLayer.scrollTop = sourceEl.scrollTop;
     highlightLayer.scrollLeft = sourceEl.scrollLeft;
+    lineNumbersContent.style.transform = `translateY(${-sourceEl.scrollTop}px)`;
   });
 
   // Using the deprecated execCommand is intentional: it is the only API that
@@ -296,6 +307,7 @@ export function initApp(): void {
 
       sourceEl.value = loadSourceFor(currentLanguage);
       updateHighlight();
+      updateLineNumbers();
 
       setStatus(`Switched to ${currentLanguage.label}`);
     });

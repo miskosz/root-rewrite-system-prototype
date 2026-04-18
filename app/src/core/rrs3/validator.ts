@@ -30,7 +30,33 @@ export function validateGeneric(prog: GenericProgram): void {
   // LHS root not bare variable).
   for (let i = 0; i < prog.rules.length; i++) {
     validateGenericRule(prog.rules[i], i, sig);
+    validatePatternCtors(prog.rules[i].left, sig, `Rule ${i + 1} left`);
+    validatePatternCtors(prog.rules[i].right, sig, `Rule ${i + 1} right`);
   }
+
+  validatePatternCtors(prog.input, sig, "input");
+}
+
+function validatePatternCtors(
+  pt: PatternTerm,
+  sig: GenericSignature,
+  context: string,
+): void {
+  if (pt.kind === "variable") return;
+  const decl = sig.get(pt.ctor);
+  if (!decl) {
+    throw new ParseError(
+      `${context}: unknown constructor '${pt.ctor}'`,
+      pt.line, pt.col,
+    );
+  }
+  if (decl.isAlias) {
+    throw new ParseError(
+      `${context}: alias '${pt.ctor}' cannot be used as a constructor`,
+      pt.line, pt.col,
+    );
+  }
+  for (const c of pt.children) validatePatternCtors(c, sig, context);
 }
 
 function validateTypeRef(
