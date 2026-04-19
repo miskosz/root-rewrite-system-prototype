@@ -34,7 +34,7 @@ export type PatternTerm =
   | { kind: "term"; ctor: string; children: PatternTerm[]; line: number; col: number }
   | { kind: "variable"; name: string; line: number; col: number };
 
-/** A `for var in Alias` binding: expands the rule over each constant member. */
+/** A `for 'var in Alias` binding: expands the rule over each constant member. */
 export interface ForBinding {
   varName: string;
   aliasName: string;

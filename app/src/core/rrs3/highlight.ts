@@ -93,7 +93,7 @@ export function highlight(source: string): string {
     if (source[i] === "@" && i + 1 < source.length && /[A-Za-z_]/.test(source[i + 1])) {
       let end = i + 1;
       while (end < source.length && /[A-Za-z0-9_]/.test(source[end])) end++;
-      parts.push(`<span class="hl-alias">${escapeHtml(source.slice(i, end))}</span>`);
+      parts.push(`<span class="hl-operator">@</span><span class="hl-alias">${escapeHtml(source.slice(i + 1, end))}</span>`);
       i = end;
       continue;
     }

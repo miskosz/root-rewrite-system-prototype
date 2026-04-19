@@ -286,7 +286,7 @@ class Parser {
     return { left, right, expansions };
   }
 
-  /** Parse zero or more `for v in Alias (, v in Alias)*:` prefixes before a rule. */
+  /** Parse zero or more `for 'v in Alias (, 'v in Alias)*:` prefixes before a rule. */
   private parseForBindings(): ForBinding[] {
     const bindings: ForBinding[] = [];
     while (this.at("KW", "for")) {
@@ -302,10 +302,7 @@ class Parser {
   }
 
   private parseOneForBinding(): ForBinding {
-    const varTok = this.expect("IDENT");
-    if (!isVariable(varTok.value)) {
-      this.err(`'for' binder '${varTok.value}' must be a variable (lowercase)`, varTok.line, varTok.col);
-    }
+    const varTok = this.expect("TYPEVAR");
     this.expect("KW", "in");
     const aliasTok = this.expect("IDENT");
     return {
@@ -330,6 +327,11 @@ class Parser {
   }
 
   private parsePrimaryPatternTerm(): PatternTerm {
+    if (this.at("TYPEVAR")) {
+      const tv = this.advance();
+      return { kind: "variable", name: tv.value, line: tv.line, col: tv.col };
+    }
+
     const ident = this.expect("IDENT");
 
     if (isVariable(ident.value)) {
