@@ -6,6 +6,7 @@ import type {
   GenericProgram,
   GenericSignature,
   GenericRule,
+  GenericTypeDecl,
   ForBinding,
   PatternTerm,
   TypeRef,
@@ -22,6 +23,7 @@ class Parser {
   private pos = 0;
   private tokens: Token[];
   private aliasNames: Set<string> = new Set();
+  private openAliases: Map<string, GenericTypeDecl> = new Map();
 
   constructor(tokens: Token[]) {
     this.tokens = tokens;
@@ -77,19 +79,19 @@ class Parser {
     while (this.pos < this.tokens.length) {
       const t = this.peek()!;
 
-      if (t.kind === "KW" && t.value === "const") {
-        this.advance();
-        const nameTok = this.expect("IDENT");
-        checkDup(nameTok.value, nameTok.line, nameTok.col);
-        signature.set(nameTok.value, { params: [], childTypes: [], isAlias: false, isConst: true });
-      } else if (t.kind === "KW" && t.value === "type") {
-        this.advance();
-        const nameTok = this.expect("IDENT");
-        checkDup(nameTok.value, nameTok.line, nameTok.col);
-        const params = this.parseTypeParams();
-        this.expect("COLON");
-        const childTypes = this.parseChildTypeRefs();
-        signature.set(nameTok.value, { params, childTypes, isAlias: false, isConst: false });
+      if (t.kind === "AT") {
+        const decorators = this.parseDecorators();
+        const next = this.peek();
+        if (!next || next.kind !== "KW" || (next.value !== "type" && next.value !== "const")) {
+          this.err(
+            `Decorators are only allowed on 'type' or 'const' declarations`,
+            next?.line ?? t.line, next?.col ?? t.col,
+          );
+        }
+        const nameTok = this.parseTypeOrConstDecl(signature, checkDup);
+        this.applyDecorators(nameTok, decorators, signature);
+      } else if (t.kind === "KW" && (t.value === "const" || t.value === "type")) {
+        this.parseTypeOrConstDecl(signature, checkDup);
       } else if (t.kind === "KW" && t.value === "alias") {
         this.advance();
         const nameTok = this.expect("IDENT");
@@ -99,6 +101,23 @@ class Parser {
         const row = this.parseTypeRefList();
         signature.set(nameTok.value, { params, childTypes: [row], isAlias: true, isConst: false });
         this.aliasNames.add(nameTok.value);
+      } else if (t.kind === "KW" && t.value === "open") {
+        this.advance();
+        this.expect("KW", "alias");
+        const nameTok = this.expect("IDENT");
+        checkDup(nameTok.value, nameTok.line, nameTok.col);
+        if (this.at("LANGLE")) {
+          this.err(`Open alias '${nameTok.value}' cannot have type parameters`, nameTok.line, nameTok.col);
+        }
+        const decl: GenericTypeDecl = {
+          params: [],
+          childTypes: [[]],
+          isAlias: true,
+          isConst: false,
+        };
+        signature.set(nameTok.value, decl);
+        this.aliasNames.add(nameTok.value);
+        this.openAliases.set(nameTok.value, decl);
       } else if (t.kind === "KW" && t.value === "input") {
         if (input) this.err("Duplicate 'input' statement", t.line, t.col);
         this.advance();
@@ -114,6 +133,71 @@ class Parser {
     if (!input) this.err("Missing 'input:' statement");
 
     return { signature, rules, input };
+  }
+
+  /** Parse one `const`/`type` declaration and return its name token. */
+  private parseTypeOrConstDecl(
+    signature: GenericSignature,
+    checkDup: (n: string, l: number, c: number) => void,
+  ): Token {
+    const kwTok = this.advance(); // `const` or `type`
+    const nameTok = this.expect("IDENT");
+    checkDup(nameTok.value, nameTok.line, nameTok.col);
+    if (kwTok.value === "const") {
+      signature.set(nameTok.value, { params: [], childTypes: [], isAlias: false, isConst: true });
+    } else {
+      const params = this.parseTypeParams();
+      this.expect("COLON");
+      const childTypes = this.parseChildTypeRefs();
+      signature.set(nameTok.value, { params, childTypes, isAlias: false, isConst: false });
+    }
+    return nameTok;
+  }
+
+  /** Parse one or more `@Name` decorator tokens. */
+  private parseDecorators(): Token[] {
+    const decs: Token[] = [];
+    while (this.at("AT")) {
+      this.advance();
+      decs.push(this.expect("IDENT"));
+    }
+    return decs;
+  }
+
+  private applyDecorators(
+    declNameTok: Token,
+    decorators: Token[],
+    signature: GenericSignature,
+  ): void {
+    const decl = signature.get(declNameTok.value)!;
+    if (decl.params.length > 0) {
+      throw new ParseError(
+        `Decorators are not allowed on generic declarations: '${declNameTok.value}' has type parameters`,
+        declNameTok.line, declNameTok.col,
+      );
+    }
+    const seen = new Set<string>();
+    for (const dec of decorators) {
+      if (seen.has(dec.value)) {
+        throw new ParseError(
+          `Duplicate decorator '@${dec.value}' on '${declNameTok.value}'`,
+          dec.line, dec.col,
+        );
+      }
+      seen.add(dec.value);
+      const openDecl = this.openAliases.get(dec.value);
+      if (!openDecl) {
+        throw new ParseError(
+          `Unknown open alias '@${dec.value}' (declare it with 'open alias ${dec.value}')`,
+          dec.line, dec.col,
+        );
+      }
+      openDecl.childTypes[0].push({
+        kind: "concrete",
+        name: declNameTok.value,
+        args: [],
+      });
+    }
   }
 
   /** Parse `< 'a, 'b, ... >` if present, else return []. */

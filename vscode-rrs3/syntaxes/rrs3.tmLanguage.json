@@ -6,6 +6,7 @@
     { "include": "#section-keyword" },
     { "include": "#declaration-keyword" },
     { "include": "#control-keyword" },
+    { "include": "#decorator" },
     { "include": "#arrow" },
     { "include": "#typevar" },
     { "include": "#constructor" },
@@ -25,12 +26,16 @@
       }
     },
     "declaration-keyword": {
-      "match": "\\b(const|type|alias|rule)\\b",
+      "match": "\\b(open\\s+alias|const|type|alias|rule)\\b",
       "name": "keyword.other.declaration.rrs3"
     },
     "control-keyword": {
       "match": "\\b(for|in)\\b",
       "name": "keyword.control.rrs3"
+    },
+    "decorator": {
+      "match": "@[A-Za-z_][A-Za-z0-9_]*",
+      "name": "entity.name.function.decorator.rrs3"
     },
     "arrow": {
       "name": "keyword.operator.rrs3",

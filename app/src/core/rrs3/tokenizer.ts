@@ -13,9 +13,10 @@ export type TokenKind =
   | "LANGLE"   // <
   | "RANGLE"   // >
   | "COMMA"    // ,
-  | "KW";      // input, const, type, alias, rule, for, in
+  | "AT"       // @
+  | "KW";      // input, const, type, alias, rule, for, in, open
 
-export const KEYWORDS = new Set(["input", "const", "type", "alias", "rule", "for", "in"]);
+export const KEYWORDS = new Set(["input", "const", "type", "alias", "rule", "for", "in", "open"]);
 
 export interface Token {
   kind: TokenKind;
@@ -88,6 +89,7 @@ export function tokenize(source: string): Token[] {
       "<": "LANGLE",
       ">": "RANGLE",
       ",": "COMMA",
+      "@": "AT",
     };
     if (source[i] in singleChars) {
       tokens.push({ kind: singleChars[source[i]], value: source[i], line, col: startCol });

@@ -9,6 +9,8 @@ function collectAliasNames(source: string): Set<string> {
   const re = /\balias\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?:<[^>]*>)?\s*:/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(source)) !== null) names.add(m[1]);
+  const openRe = /\bopen\s+alias\s+([A-Za-z_][A-Za-z0-9_]*)/g;
+  while ((m = openRe.exec(source)) !== null) names.add(m[1]);
   return names;
 }
 
@@ -77,6 +79,15 @@ export function highlight(source: string): string {
     if (source[i] === "(" || source[i] === ")") {
       parts.push(escapeHtml(source[i]));
       i++;
+      continue;
+    }
+
+    // Decorator: @Name
+    if (source[i] === "@" && i + 1 < source.length && /[A-Za-z_]/.test(source[i + 1])) {
+      let end = i + 1;
+      while (end < source.length && /[A-Za-z0-9_]/.test(source[end])) end++;
+      parts.push(`<span class="hl-alias">${escapeHtml(source.slice(i, end))}</span>`);
+      i = end;
       continue;
     }
 
