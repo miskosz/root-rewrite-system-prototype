@@ -170,12 +170,6 @@ class Parser {
     signature: GenericSignature,
   ): void {
     const decl = signature.get(declNameTok.value)!;
-    if (decl.params.length > 0) {
-      throw new ParseError(
-        `Decorators are not allowed on generic declarations: '${declNameTok.value}' has type parameters`,
-        declNameTok.line, declNameTok.col,
-      );
-    }
     const seen = new Set<string>();
     for (const dec of decorators) {
       if (seen.has(dec.value)) {
@@ -192,11 +186,16 @@ class Parser {
           dec.line, dec.col,
         );
       }
-      openDecl.childTypes[0].push({
-        kind: "concrete",
-        name: declNameTok.value,
-        args: [],
-      });
+      if (decl.params.length > 0) {
+        if (!openDecl.genericMembers) openDecl.genericMembers = new Set();
+        openDecl.genericMembers.add(declNameTok.value);
+      } else {
+        openDecl.childTypes[0].push({
+          kind: "concrete",
+          name: declNameTok.value,
+          args: [],
+        });
+      }
     }
   }
 

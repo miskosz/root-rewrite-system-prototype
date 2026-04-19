@@ -28,12 +28,63 @@ type ConcreteRef = TypeRef;
 const INSTANTIATION_CAP = 1000;
 
 export function monomorphize(prog: GenericProgram): Program {
+  // Open aliases with `genericMembers` (from `@OpenAlias` on a generic decl)
+  // collect concrete instantiations during scheduling. Each new instantiation
+  // can change the set of members an open alias expands to, so we iterate
+  // until those member sets stop growing.
+  const FIXPOINT_CAP = 50;
+  let prev = openAliasMemberSizes(prog.signature);
+  let result = monomorphizeOnce(prog);
+  for (let iter = 0; iter < FIXPOINT_CAP; iter++) {
+    const next = openAliasMemberSizes(prog.signature);
+    if (sameSizes(prev, next)) return result;
+    prev = next;
+    result = monomorphizeOnce(prog);
+  }
+  throw new ParseError(
+    `Open-alias generic-member registration did not converge after ${FIXPOINT_CAP} iterations`,
+    0, 0,
+  );
+}
+
+function openAliasMemberSizes(sig: GenericSignature): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const [name, decl] of sig) {
+    if (decl.isAlias && decl.genericMembers) {
+      out.set(name, decl.childTypes[0].length);
+    }
+  }
+  return out;
+}
+
+function sameSizes(a: Map<string, number>, b: Map<string, number>): boolean {
+  if (a.size !== b.size) return false;
+  for (const [k, v] of a) if (b.get(k) !== v) return false;
+  return true;
+}
+
+function monomorphizeOnce(prog: GenericProgram): Program {
   const sig = prog.signature;
   const rulesExpanded = expandForRules(prog.rules, sig);
   const seen = new Set<string>();
   const worklist: ConcreteRef[] = [];
   const outSig: Signature = new Map();
   const outRules: Rule[] = [];
+
+  // Reverse map: generic type name -> open aliases that auto-include its
+  // every monomorphization. Built once per pass.
+  const genericToOpenAliases = new Map<string, string[]>();
+  for (const [aliasName, decl] of sig) {
+    if (!decl.isAlias || !decl.genericMembers) continue;
+    for (const gname of decl.genericMembers) {
+      let list = genericToOpenAliases.get(gname);
+      if (!list) {
+        list = [];
+        genericToOpenAliases.set(gname, list);
+      }
+      list.push(aliasName);
+    }
+  }
 
   const schedule = (ref: ConcreteRef): string => {
     if (ref.kind === "var") {
@@ -54,6 +105,24 @@ export function monomorphize(prog: GenericProgram): Program {
       }
       seen.add(key);
       worklist.push(ref);
+
+      const aliases = genericToOpenAliases.get(ref.name);
+      if (aliases) {
+        for (const aliasName of aliases) {
+          const aliasDecl = sig.get(aliasName)!;
+          const memberKey = mangleRef(ref);
+          const already = aliasDecl.childTypes[0].some(
+            (m) => m.kind === "concrete" && mangleRef(m) === memberKey,
+          );
+          if (!already) {
+            aliasDecl.childTypes[0].push({
+              kind: "concrete",
+              name: ref.name,
+              args: ref.args,
+            });
+          }
+        }
+      }
     }
     return key;
   };
@@ -276,6 +345,118 @@ function pickConstructorFromRef(
   return pickConstructor(expanded, ctorName);
 }
 
+/**
+ * Collect every generic-type name reachable as a `genericMembers` entry of any
+ * open alias inside `refs` (after substitution).
+ */
+function collectAliasGenericMembers(
+  refs: TypeRef[],
+  env: Map<string, ConcreteRef>,
+  sig: GenericSignature,
+): Set<string> {
+  const out = new Set<string>();
+  const visit = (ref: TypeRef, e: Map<string, ConcreteRef>, stack: Set<string>) => {
+    const sub = substituteRef(ref, e);
+    if (sub.kind === "var") return;
+    const decl = sig.get(sub.name);
+    if (!decl || !decl.isAlias) return;
+    const key = mangleRef(sub);
+    if (stack.has(key)) return;
+    if (decl.genericMembers) {
+      for (const g of decl.genericMembers) out.add(g);
+    }
+    const newStack = new Set(stack);
+    newStack.add(key);
+    const aliasEnv = bindParams(decl.params, sub.args, sub.name);
+    for (const m of decl.childTypes[0]) visit(m, aliasEnv, newStack);
+  };
+  for (const r of refs) visit(r, env, new Set());
+  return out;
+}
+
+/**
+ * Bottom-up: infer a constructor's concrete instantiation purely from its
+ * pattern children. For each type parameter, find a child slot consisting of
+ * a single typevar reference to that parameter, and bind it to the child's
+ * own inferred type. This is the fallback used when a generic constructor
+ * appears at a slot via an open alias's `genericMembers`.
+ */
+function inferConcreteFromPattern(
+  pt: PatternTerm,
+  sig: GenericSignature,
+): ConcreteRef {
+  if (pt.kind === "variable") {
+    throw new ParseError(
+      `Cannot infer concrete type for variable '${pt.name}'`,
+      pt.line, pt.col,
+    );
+  }
+  const decl = sig.get(pt.ctor);
+  if (!decl) {
+    throw new ParseError(`Unknown constructor '${pt.ctor}'`, pt.line, pt.col);
+  }
+  if (decl.isAlias) {
+    throw new ParseError(
+      `Alias '${pt.ctor}' cannot be used as a constructor`,
+      pt.line, pt.col,
+    );
+  }
+  if (decl.params.length === 0) {
+    return { kind: "concrete", name: pt.ctor, args: [] };
+  }
+  if (pt.children.length !== decl.childTypes.length) {
+    throw new ParseError(
+      `Constructor '${pt.ctor}' expects ${decl.childTypes.length} children, got ${pt.children.length}`,
+      pt.line, pt.col,
+    );
+  }
+  const env = new Map<string, ConcreteRef>();
+  for (let i = 0; i < decl.childTypes.length; i++) {
+    const slot = decl.childTypes[i];
+    if (slot.length !== 1) continue;
+    const ref = slot[0];
+    if (ref.kind !== "var") continue;
+    if (env.has(ref.name)) continue;
+    const childPt = pt.children[i];
+    if (childPt.kind === "variable") continue;
+    env.set(ref.name, inferConcreteFromPattern(childPt, sig));
+  }
+  for (const p of decl.params) {
+    if (!env.has(p)) {
+      throw new ParseError(
+        `Cannot infer type parameter '${p}' of '${pt.ctor}' from its children`,
+        pt.line, pt.col,
+      );
+    }
+  }
+  return {
+    kind: "concrete",
+    name: pt.ctor,
+    args: decl.params.map((p) => env.get(p)!),
+  };
+}
+
+/**
+ * Resolve a constructor name against an expected slot, falling back to the
+ * generic-members fallback if direct lookup fails.
+ */
+function resolveCtor(
+  expectedRefs: TypeRef[],
+  env: Map<string, ConcreteRef>,
+  pt: PatternTerm,
+  sig: GenericSignature,
+): ConcreteRef | null {
+  if (pt.kind === "variable") return null;
+  const expanded = expandSlot(expectedRefs, env, sig);
+  const direct = pickConstructor(expanded, pt.ctor);
+  if (direct) return direct;
+  const generics = collectAliasGenericMembers(expectedRefs, env, sig);
+  if (generics.has(pt.ctor)) {
+    return inferConcreteFromPattern(pt, sig);
+  }
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // Walking ground input terms
 // ---------------------------------------------------------------------------
@@ -289,7 +470,7 @@ function walkTerm(
   if (pt.kind === "variable") {
     throw new ParseError(`Input cannot contain variables`, 0, 0);
   }
-  const matched = pickConstructorFromRef(expected, pt.ctor, sig);
+  const matched = resolveCtor([expected], new Map(), pt, sig);
   if (!matched || matched.kind !== "concrete") {
     throw new ParseError(
       `Constructor '${pt.ctor}' does not match expected type '${mangleRef(expected)}'`,
@@ -312,8 +493,7 @@ function walkTerm(
     if (childPt.kind === "variable") {
       throw new ParseError(`Input cannot contain variables`, 0, 0);
     }
-    const slotExpanded = expandSlot(slot, env, sig);
-    const childExpected = pickConstructor(slotExpanded, childPt.ctor);
+    const childExpected = resolveCtor(slot, env, childPt, sig);
     if (!childExpected) {
       throw new ParseError(
         `Constructor '${childPt.ctor}' does not match any member of slot ${i + 1} for '${pt.ctor}'`,
@@ -389,7 +569,7 @@ function walkPattern(
   if (pt.kind === "variable") {
     return { kind: "variable", name: pt.name };
   }
-  const matched = pickConstructorFromRef(expected, pt.ctor, sig);
+  const matched = resolveCtor([expected], new Map(), pt, sig);
   if (!matched || matched.kind !== "concrete") {
     throw new ParseError(
       `Rule ${ruleIndex + 1}: constructor '${pt.ctor}' does not match expected type '${mangleRef(expected)}'`,
@@ -414,7 +594,9 @@ function walkPattern(
       continue;
     }
     const slotExpanded = expandSlot(slot, env, sig);
-    const childExpected = pickConstructor(slotExpanded, childPt.ctor);
+    const childExpected =
+      pickConstructor(slotExpanded, childPt.ctor) ??
+      resolveCtor(slot, env, childPt, sig);
     if (!childExpected) {
       const allowed = slotExpanded.map(mangleRef);
       const slotSubstituted = slot.map((ref) => substituteRef(ref, env));

@@ -19,6 +19,12 @@ export interface GenericTypeDecl {
   isAlias: boolean;
   /** True for `const` (zero children, zero params). */
   isConst: boolean;
+  /**
+   * Open-alias only: names of generic types whose every monomorphization
+   * should be appended to this alias's members during monomorphization.
+   * Populated by `@OpenAlias` decorators on generic `type` declarations.
+   */
+  genericMembers?: Set<string>;
 }
 
 export type GenericSignature = Map<string, GenericTypeDecl>;
