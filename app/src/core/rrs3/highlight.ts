@@ -52,6 +52,13 @@ export function highlight(source: string): string {
       continue;
     }
 
+    // Double colon ::
+    if (source[i] === ":" && i + 1 < source.length && source[i + 1] === ":") {
+      parts.push(`<span class="hl-operator">::</span>`);
+      i += 2;
+      continue;
+    }
+
     // Operators: | : ,
     if (source[i] === "|" || source[i] === ":" || source[i] === ",") {
       parts.push(`<span class="hl-operator">${source[i]}</span>`);

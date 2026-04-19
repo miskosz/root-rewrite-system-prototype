@@ -318,8 +318,18 @@ class Parser {
 
   // -- terms ----------------------------------------------------------------
 
-  /** Parse a term that may contain variables. */
+  /** Parse a term that may contain variables, including `head :: tail` sugar for `L(head, tail)`. */
   private parsePatternTerm(): PatternTerm {
+    const head = this.parsePrimaryPatternTerm();
+    if (this.at("DBLCOLON")) {
+      this.advance();
+      const tail = this.parsePatternTerm();
+      return { kind: "term", ctor: "L", children: [head, tail], line: head.line, col: head.col };
+    }
+    return head;
+  }
+
+  private parsePrimaryPatternTerm(): PatternTerm {
     const ident = this.expect("IDENT");
 
     if (isVariable(ident.value)) {

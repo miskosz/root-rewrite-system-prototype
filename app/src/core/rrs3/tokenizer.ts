@@ -8,6 +8,7 @@ export type TokenKind =
   | "ARROW"    // ->
   | "PIPE"     // |
   | "COLON"    // :
+  | "DBLCOLON" // ::
   | "LPAREN"   // (
   | "RPAREN"   // )
   | "LANGLE"   // <
@@ -71,6 +72,14 @@ export function tokenize(source: string): Token[] {
     }
 
     const startCol = col;
+
+    // Double colon ::
+    if (source[i] === ":" && i + 1 < source.length && source[i + 1] === ":") {
+      tokens.push({ kind: "DBLCOLON", value: "::", line, col: startCol });
+      i += 2;
+      col += 2;
+      continue;
+    }
 
     // Arrow ->
     if (source[i] === "-" && i + 1 < source.length && source[i + 1] === ">") {
