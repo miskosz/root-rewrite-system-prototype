@@ -1,0 +1,61 @@
+{
+"name": "RRS4",
+  "scopeName": "source.rrs4",
+  "patterns": [
+    { "include": "#comment" },
+    { "include": "#section-keyword" },
+    { "include": "#declaration-keyword" },
+    { "include": "#control-keyword" },
+    { "include": "#decorator" },
+    { "include": "#arrow" },
+    { "include": "#typevar" },
+    { "include": "#constructor" },
+    { "include": "#variable" },
+    { "include": "#operator" }
+  ],
+  "repository": {
+    "comment": {
+      "name": "comment.line.number-sign.rrs4",
+      "match": "#.*$"
+    },
+    "section-keyword": {
+      "match": "\\b(input)\\s*(:)",
+      "captures": {
+        "1": { "name": "keyword.control.section.rrs4" },
+        "2": { "name": "punctuation.separator.rrs4" }
+      }
+    },
+    "declaration-keyword": {
+      "match": "\\b(open\\s+alias|const|type|alias|rule|fn)\\b",
+      "name": "keyword.other.declaration.rrs4"
+    },
+    "control-keyword": {
+      "match": "\\b(for|in|match|return|call)\\b",
+      "name": "keyword.control.rrs4"
+    },
+    "decorator": {
+      "match": "@[A-Za-z_][A-Za-z0-9_]*",
+      "name": "entity.name.function.decorator.rrs4"
+    },
+    "arrow": {
+      "name": "keyword.operator.rrs4",
+      "match": "->"
+    },
+    "typevar": {
+      "name": "storage.modifier.typevar.rrs4",
+      "match": "'[a-z][A-Za-z0-9_]*"
+    },
+    "constructor": {
+      "name": "entity.name.type.constructor.rrs4",
+      "match": "\\b[A-Z][A-Za-z0-9_]*\\b"
+    },
+    "variable": {
+      "name": "variable.other.rrs4",
+      "match": "\\b[a-z_][A-Za-z0-9_]*\\b"
+    },
+    "operator": {
+      "name": "punctuation.separator.rrs4",
+      "match": "[|:,<]|(?<!-)>"
+    }
+  }
+}

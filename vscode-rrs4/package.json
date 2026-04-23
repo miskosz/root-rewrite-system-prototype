@@ -1,0 +1,28 @@
+{
+  "name": "rrs4",
+  "displayName": "RRS4 Language Support",
+  "description": "Syntax highlighting for Root Rewrite System 4 (.rrs4) files",
+  "version": "0.1.0",
+  "publisher": "rrs",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": ["Programming Languages"],
+  "contributes": {
+    "languages": [
+      {
+        "id": "rrs4",
+        "aliases": ["RRS4", "Root Rewrite System 4"],
+        "extensions": [".rrs4"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "rrs4",
+        "scopeName": "source.rrs4",
+        "path": "./syntaxes/rrs4.tmLanguage.json"
+      }
+    ]
+  }
+}

@@ -490,7 +490,7 @@ type FindBindOutNoMatch:
 type FindBindOutMatch:
     binds: List<Bind>
     var: Var
-    match: Bind
+    match: Term
 @CallType
 type FindBind2:
     bind1: Bind
