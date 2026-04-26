@@ -1,0 +1,119 @@
+# Subtypes and supertypes
+
+type Term(id: Nat, children: List<Term>)
+
+type VarTerm:
+    Var(id: Nat)
+    VarNode(id: Nat, children: List<VarTerm>)
+
+# How to express / prove that VarTerm is a "supertype" of Term?
+# That Term can be passed in where VarTerm can?
+
+# RRS2 style (product of sums):
+
+type Node:
+    id: Nat
+    children: List<Term>
+alias Term: Node
+
+type Var:
+    Nat
+type VarNode:
+    id: Nat
+    children: List<VarTerm>
+alias VarTerm: VarNode | Var
+
+Node < VarNode
+(Term < VarTerm)
+
+###
+
+type Node:
+    id: Nat
+    children: List<Node>
+
+type Var:
+    Nat
+type VarNode:
+    id: Nat
+    children: List<VarNode | Var>
+
+Node < VarNode
+type VarNode<:
+    id: Nat
+    children: List<VarNode>
+
+###
+
+type ListNode:
+    Nil
+    L(head: Node, tail: ListNode)
+
+type ListVarNode:
+    Nil
+    L(head: VarNode, tail: ListVarNode)
+
+###
+
+# Konstruktory a typy oddelene
+# Termy su poskladane z konstruktorov, ktore maju iba aritu
+# Typy nam dovoluju "reasonovat" o termoch
+
+# Dobry priklad je List<'t>. 't je *typ*, nie konstruktor.
+# A vsetky monomorphisms pouzivaju ten isty kostruktor L (resp. Cons).
+# WRONG! Praveze rozne verzie L sa vyrobia.
+#
+# Asi vieme robit aj aritmetiku:
+#   A < A | B
+#   A < B | A
+#   A < B => C*A < C*B
+#
+#   Assume A < B
+#   Nil < Nil
+#   Potrebujem indukciu: List<A> < List<B>
+#   => L(A, List<A>) < L(B, List<A>) < L(B, List<B>)
+#   => Nil | L(A, List<A>) < Nil | L(B, List<B>)
+
+# Syntax pre product - Type:Cons
+
+type Term:
+    Node(id: Nat, children: List<Term>)
+
+type VarTerm:
+    Var(id: Nat)
+    Node(id: Nat, children: List<VarTerm>)
+
+# expanded
+
+type _1:
+    Node(id: Nat, children: List<Node>)
+
+type _2:
+    Var(id: Nat)
+    Node(id: Nat, children: List<Var | Node>)
+
+# a to uz dame z axiomov (na typoch, konstruktory su aj ich typy)
+
+Node < Var | Node
+List<Node> < List<Var | Node>
+Node(Nat, List<Node>) < Node(Nat, List<Var | Node>)
+Node(Nat, List<Node>) < Var | Node(Nat, List<Var | Node>)
+
+# I.e., co chceme dokazat je:
+term: Term => term: VarTerm
+
+# Tzn chcem aby fungovalo:
+fn Proof(term: Term): VarTerm -> term
+
+# Type inference system ale nie som si isty, ci vie byt dost smart.
+# Toto ale urcite fungovat bude:
+fn Proof(term: Term): VarTerm -> match term:
+    Node_1(id, ch) -> call ProofTerms(ch):
+        ch -> Node_2(id, ch)
+
+fn ProofTerms(terms: List<Term>): List<VarTerm> -> match terms:
+    Nil -> Nil
+    h :: t -> call Proof(h):
+        h -> call ProofTerms(t):
+            t -> h :: t
+

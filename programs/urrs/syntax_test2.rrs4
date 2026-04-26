@@ -1,0 +1,145 @@
+### Match ###
+
+type MatchOut:
+    MatchOutFalse(varterm: Term, term: Term)
+    MatchOutTrue(varterm: Term, binds: List<Bind>)
+
+fn Match<'id: Z8>(varterm: Term, term: Term): MatchOut -> match
+    match varterm, term:
+        Var('id), term -> MatchOutTrue(Var('id), Bind(Var('id), term) :: Nil)
+        Node('id, ch1), Node('id, ch2) -> call MatchChildren(ch1, ch2):
+            MatchChildrenOutFalse(ch1, ch2) -> MatchOutFalse(Node('id, ch1), Node('id, ch2))
+            MatchChildrenOutTrue(ch1, binds) -> MatchOutTrue(Node('id, ch1), binds)
+        varterm, term -> MatchOutFalse(varterm, term)
+
+### MatchChildren ###
+
+type MatchChildrenOut:
+    MatchChildrenOutFalse(ch1: List<Term>, ch2: List<Term>)
+    MatchChildrenOutTrue(binds: List<Bind>, ch2: List<Term>)
+
+# Idea:
+# - nest only if there are multiple options (sum_type)
+# - otherwise the same level
+fn MatchChildren(ch1: List<Term>, ch2: List<Term>) -> MatchChildrenOut:
+    match ch1, ch2:
+        Nil, Nil -> MatchChildrenOutTrue(Nil, Nil)
+        h1 :: t1, h2 :: t2 -> call Match(h1, h2):
+            MatchOutFalse(h1, h2) -> MatchChildrenOutFalse(h1 :: t1, h2 :: t2)
+            MatchOutTrue(h1, head_binds) -> call MatchChildren(t1, t2):
+                MatchChildrenOutFalse(t1, t2) -> call CopyTerm(h1):
+                    CopyTermOut(h1, h2) -> call Substitute(h2, head_binds):
+                        SubstituteOut(h2, _) -> MatchChildrenOutFalse(h1 :: t1, h2 :: t2)
+                MatchChildrenOutTrue(t1, tail_binds) -> call ListMerge(head_binds, tail_binds):
+                    ListMergeOut(binds) -> MatchChildrenOutTrue(h1 :: t1, binds)
+        ch1, ch2 -> MatchChildrenOutFalse(ch1, ch2)
+
+# Idea:
+# - nest only if there are multiple options (sum_type)
+# - otherwise the same level
+fn MatchChildren(ch1: List<Term>, ch2: List<Term>) return MatchChildrenOut -> match ch1, ch2:
+    Nil, Nil -> MatchChildrenOutTrue(Nil, Nil)
+    h1 :: t1, h2 :: t2 -> call Match(h1, h2):
+        MatchOutFalse(h1, h2) -> MatchChildrenOutFalse(h1 :: t1, h2 :: t2)
+        MatchOutTrue(h1, head_binds) -> call MatchChildren(t1, t2):
+            MatchChildrenOutFalse(t1, t2) ->
+                CopyTermOut(h1, h2) := CopyTerm(h1) ->
+                SubstituteOut(h2, _) := Substitute(h2, head_binds) ->
+                MatchChildrenOutFalse(h1 :: t1, h2 :: t2)
+            MatchChildrenOutTrue(t1, tail_binds) ->
+                ListMergeOut(binds) := ListMerge(head_binds, tail_binds) ->
+                MatchChildrenOutTrue(h1 :: t1, binds)
+    ch1, ch2 -> MatchChildrenOutFalse(ch1, ch2)
+
+fn MatchChildren(ch1: List<Term>, ch2: List<Term>) return MatchChildrenOut -> match ch1, ch2:
+    => Nil, Nil -> MatchChildrenOutTrue(Nil, Nil)
+    => h1 :: t1, h2 :: t2 -> call Match(h1, h2):
+        => MatchOutFalse(h1, h2) -> MatchChildrenOutFalse(h1 :: t1, h2 :: t2)
+        => MatchOutTrue(h1, head_binds) -> call MatchChildren(t1, t2):
+            => MatchChildrenOutFalse(t1, t2) ->
+                call CopyTerm(h1) => CopyTermOut(h1, h2) ->
+                call Substitute(h2, head_binds) => SubstituteOut(h2, _) ->
+                MatchChildrenOutFalse(h1 :: t1, h2 :: t2)
+            => MatchChildrenOutTrue(t1, tail_binds) ->
+                call ListMerge(head_binds, tail_binds) => ListMergeOut(binds)  ->
+                MatchChildrenOutTrue(h1 :: t1, binds)
+    => ch1, ch2 -> MatchChildrenOutFalse(ch1, ch2)
+
+fn MatchChildren(ch1: List<Term>, ch2: List<Term>) return MatchChildrenOut;
+    match ch1, ch2 {
+        Nil, Nil: return MatchChildrenOutTrue(Nil, Nil);
+        h1 :: t1, h2 :: t2: call Match(h1, h2) {
+            MatchOutFalse(h1, h2): return MatchChildrenOutFalse(h1 :: t1, h2 :: t2)
+            MatchOutTrue(h1, head_binds): call MatchChildren(t1, t2) {
+                MatchChildrenOutFalse(t1, t2):
+                    call CopyTerm(h1) => CopyTermOut(h1, h2);
+                    call Substitute(h2, head_binds) => SubstituteOut(h2, _);
+                    return MatchChildrenOutFalse(h1 :: t1, h2 :: t2)
+                MatchChildrenOutTrue(t1, tail_binds):
+                    call ListMerge(head_binds, tail_binds) => ListMergeOut(binds);
+                    return MatchChildrenOutTrue(h1 :: t1, binds)
+            }
+        }
+        ch1, ch2: return MatchChildrenOutFalse(ch1, ch2)
+    }
+
+# Rust-ic
+fn MatchChildren(ch1: List<Term>, ch2: List<Term>) -> MatchChildrenOut {
+    match (ch1, ch2) {
+        (Nil, Nil) => MatchChildrenOutTrue(Nil, Nil),
+        (h1 :: t1, h2 :: t2) => {
+            Match(h1, h2);
+            match ret {
+                MatchOutFalse(h1, h2) => MatchChildrenOutFalse(h1 :: t1, h2 :: t2),
+                MatchOutTrue(h1, head_binds) => {
+                    MatchChildren(t1, t2);
+                    match ret {
+                        MatchChildrenOutFalse(t1, t2) => {
+                            CopyTerm(h1) => CopyTermOut(h1, h2);
+                            Substitute(h2, head_binds) => SubstituteOut(h2, _);
+                            MatchChildrenOutFalse(h1 :: t1, h2 :: t2)
+                        },
+                        MatchChildrenOutTrue(t1, tail_binds) => {
+                            ListMerge(head_binds, tail_binds) => ListMergeOut(binds);
+                            MatchChildrenOutTrue(h1 :: t1, binds)
+                        },
+                    }
+                }
+            }
+        },
+        (ch1, ch2) => MatchChildrenOutFalse(ch1, ch2),
+    }
+}
+
+# Every 'push_call must be followed by 'match_val
+fn MatchChildren(List<Term>, List<Term>) return MatchChildrenOut: {
+    MatchChildren(Nil, Nil):
+        'push_val MatchChildrenOutTrue(Nil, Nil)
+    MatchChildren(h1 :: t1, h2 :: t2): {
+        'push_call Match(h1, h2);
+        'match_val {
+            MatchOutFalse(h1, h2):
+                'push_val MatchChildrenOutFalse(h1 :: t1, h2 :: t2)
+            MatchOutTrue(h1, head_binds): {
+                'push_call MatchChildren(t1, t2)
+                'match_val {
+                    MatchChildrenOutFalse(t1, t2): {
+                        'push_call CopyTerm(h1)
+                        'match_val CopyTermOut(h1, h2)
+                        'push_call Substitute(h2, head_binds)
+                        'match_val SubstituteOut(h2, _)
+                        'push_val MatchChildrenOutFalse(h1 :: t1, h2 :: t2)
+                    }
+                    MatchChildrenOutTrue(t1, tail_binds) {
+                        'push_call ListMerge(head_binds, tail_binds)
+                        'match_val ListMergeOut(binds)
+                        'push_val MatchChildrenOutTrue(h1 :: t1, binds)
+                    }
+                }
+            }
+        }
+    }
+    MatchChildren(ch1, ch2):
+        'push_val MatchChildrenOutFalse(ch1, ch2)
+}
+
