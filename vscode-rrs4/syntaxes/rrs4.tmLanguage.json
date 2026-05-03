@@ -30,7 +30,7 @@
       "name": "keyword.other.declaration.rrs4"
     },
     "control-keyword": {
-      "match": "\\b(for|in|match|return|call)\\b",
+      "match": "\\b(for|in|match|return|call|as)\\b",
       "name": "keyword.control.rrs4"
     },
     "decorator": {

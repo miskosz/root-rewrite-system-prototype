@@ -1,0 +1,327 @@
+# Syntax prototype 2 for RRS4
+
+###
+### begin system
+###
+
+type List<'t>:
+    Nil
+    L(head: 't, tail: List<'t>)
+
+open type CallType
+open type ValueType
+type Runtime(call_stack: List<CallType>, value_stack: List<ValueType>)
+
+###
+### end system
+###
+
+type Z8:
+    I0
+    I1
+    I2
+    I3
+    I4
+    I5
+    I6
+    I7
+
+type Term:
+    Var(id: Z8)
+    Node(id: Z8, children: List<Term>)
+
+type Bind(var: Var, term: Term)
+
+type Rule(lhs: Term, rhs: Term)
+
+# ---
+
+### ListMerge ###
+
+fn ListMerge<'a>(List<'a>, List<'a>) -> List<'a> {
+    (Nil, l2) => l2
+    (h1 :: t1, l2) => return ListMerge(t1, h1 :: l2)
+}
+
+### CopyTerm ###
+
+type CopyTermOut:
+    .Out(Term, Term)
+
+fn CopyTerm<'id: Z8>(Term) -> CopyTermOut {
+    Var('id) => .Out(Var('id), Var('id))
+    Node('id, ch) =>
+        CopyTerms(ch) as (ch1, ch1);
+        .Out(Node('id, ch1), Node('id, ch2))
+}
+
+### CopyTerms ###
+
+type CopyTermsOut:
+    .Out(ch1: List<Term>, ch2: List<Term>)
+
+fn CopyTerms(List<Term>) -> CopyTermsOut {
+    Nil => .Out(Nil, Nil)
+    h :: t =>
+        CopyTerm(h) as (h1, h2);
+        CopyTerms(t) as (t1, t2);
+        .Out(h1 :: t1, h2 :: t2)
+}
+
+# ---------------------
+# ---------------------
+
+### FindBind ###
+
+type FindBindOut:
+    .NoMatch(var: Var, binds: List<Bind>)
+    .Match(var: Var, binds: List<Bind>, term: Term)
+
+fn FindBind<'id: Z8>(var: Var, binds: List<Bind>) -> FindBindOut {
+    (var, Nil) => .NoMatch(var, Nil)
+    (Var('id), Bind(Var('id), term) :: t) => .Match(Var('id), t, term)
+    (var, h :: t) => FindBind(var, t) match {
+        .NoMatch(var, t) => .NoMatch(var, h :: t)
+        .Match(var, t, m) => .Match(var, h :: t, m)
+    }
+}
+
+### Substitute ###
+
+type SubstituteOut:
+    .Out(term: Term, unused_binds: List<Bind>)
+
+fn Substitute(term: Term, binds: List<Bind>) -> SubstituteOut {
+    Var(id) => FindBind(Var(id), binds) match {
+        .NoMatch(var, binds) => .Out(var, binds)
+        .Match(var, binds, term) => .Out(term, binds)
+    }
+    Node(id, ch) => 
+        SubstituteMany(ch, binds) as (ch, binds);
+        .Out(Node(id, ch), binds)
+}
+
+type SubstituteManyOut:
+    .Out(terms: List<Term>, unused_binds: List<Bind>)
+
+fn SubstituteMany(terms: List<Term>, binds: List<Bind>) -> SubstituteManyOut {
+    Nil => .Out(Nil, binds)
+    h :: t =>
+        Substitute(h, binds) as (h, binds);
+        SubstistuteMany(t, binds) as (t, binds);
+        .Out(h :: t, binds)
+}
+
+# ---------------------
+# ---------------------
+
+### Match ###
+
+type MatchTermOut:
+    .False(varterm: Term, term: Term)
+    .True(varterm: Term, binds: List<Bind>)
+
+fn MatchTerm<'id: Z8>(varterm: Term, term: Term) -> MatchTermOut {
+    (Var('id), term) => .True(Var('id), Bind(Var('id), term) :: Nil)
+    (Node('id, ch1), Node('id, ch2)) => MatchTerms(ch1, ch2) match {
+        .False(ch1, ch2) => .False(Node('id, ch1), Node('id, ch2))
+        .True(ch1, binds) => .True(Node('id, ch1), binds)
+    }
+    varterm, term => .False(varterm, term)
+}
+
+### MatchTerms ###
+
+type MatchTermsOut:
+    .False(ch1: List<Term>, ch2: List<Term>)
+    .True(binds: List<Bind>, ch2: List<Term>)
+
+fn MatchTerms(ch1: List<Term>, ch2: List<Term>) -> MatchTermsOut {
+    (Nil, Nil) => .True(Nil, Nil)
+    (h1 :: t1, h2 :: t2) => MatchTerm(h1, h2) match {
+        .False(h1, h2) => .False(h1 :: t1, h2 :: t2)
+        .True(h1, head_binds) => MatchTerms(t1, t2) match {
+            .False(t1, t2) =>
+                CopyTerm(h1) as (h1, h2);
+                Substitute(h2, head_binds) as (h2, _);
+                .False(h1 :: t1, h2 :: t2)
+            .True(t1, tail_binds) =>
+                ListMerge(head_binds, tail_binds) as binds;
+                .True(h1 :: t1, binds)
+        }
+    }
+    (ch1, ch2) => .False(ch1, ch2)
+}
+
+# ---------------------
+# ---------------------
+
+### ApplyFirstRule ###
+
+type ApplyFirstRuleOut:
+    .Match(rules: List<Rule>, newterm: Term)
+    .NoMatch(rules: List<Rule>, term: Term)
+
+fn ApplyFirstRule(rules: List<Rule>, term: Term) -> ApplyFirstRuleOut {
+    (Nil, term) => .NoMatch(Nil, term)
+    (Rule(lhs, rhs) :: rtail, term) => MatchTerm(lhs, term) match {
+        .True(lhs, binds) =>
+            CopyTerm(rhs) as rhs, rhs_copy;
+            Substitute(rhs_copy, binds) as newterm;
+            .Match(Rule(lhs, rhs) :: rtail, newterm)
+        .False(lhs, term) => ApplyFirstRule(rtail, term) match {
+            .Match(rtail, newterm) => .Match(Rule(lhs, rhs) ::rtail, newterm)
+            .NoMatch(rtail, term) => .NoMatch(Rule(lhs, rhs) ::rtail, term)
+        }
+    }
+}
+
+### RunRRS ###
+
+fn RunRRS(List<Rule>, Term) -> Term as (rules, term);
+    ApplyFirstRule(rules, term) match {
+        .Match(rules, newterm) => return RunRRS(rules, newterm)
+        .NoMatch(_, term) => term
+    }
+
+
+input:
+
+    # Runtime(
+    #     Match(
+    #         Node(I0, Node(I0, Nil) :: Nil),
+    #         Var(I1)
+    #     ) :: Nil,
+    #     Nil
+    # )
+
+    # Runtime(
+    #     Match(
+    #         Node(I1, Node(I0, Nil) :: Nil),
+    #         Node(I1, Node(I0, Nil) :: Nil)
+    #     ) :: Nil,
+    #     Nil
+    # )
+
+    # Runtime(
+    #     Match(
+    #         Node(I1, Node(I0, Nil) :: Nil),
+    #         Node(I1, Var(I2) :: Nil)
+    #     ) :: Nil,
+    #     Nil
+    # )
+
+    # Runtime(
+    #     Match(
+    #         Node(
+    #             I1,
+    #             Node(I0, Nil) :: Node(I1, Nil) :: Nil
+    #         ),
+    #         Node(
+    #             I1,
+    #             Var(I2) :: Node(I0, Nil) :: Nil
+    #         )
+    #     ) :: Nil,
+    #     Nil
+    # )
+
+    # Runtime(Nil, Nil)
+
+    # Runtime(
+    #     FindBind(
+    #         Bind(Var(I2), Node(I0, Nil)) ::
+    #         Bind(Var(I1), Node(I1, Nil)) ::
+    #         Bind(Var(I0), Node(I2, Nil)) ::
+    #         Nil,
+    #         Var(I0)
+    #     ) :: Nil,
+    #     Nil
+    # )
+
+    # Runtime(
+    #     Substitute(
+    #         Bind(Var(I2), Node(I0, Nil)) ::
+    #         Bind(Var(I1), Node(I1, Nil)) ::
+    #         Bind(Var(I0), Node(I2, Nil)) ::
+    #             Nil,
+    #         Node(
+    #             I0,
+    #             Node(
+    #                 I1,
+    #                 Var(I2) :: Node(I0, Nil) :: Nil
+    #             ) ::
+    #             Var(I1) ::
+    #                 Nil
+    #         )
+    #     ) :: Nil,
+    #     Nil
+    # )
+
+    # Runtime(
+    #     Match(
+    #         Node(
+    #             I0,
+    #             Node(I0, Nil) ::
+    #             Node(I0, Nil) ::
+    #             Nil
+    #         ),
+    #         Node(
+    #             I0,
+    #             Var(I0) ::
+    #             Node(I1, Nil) ::
+    #             Nil
+    #         )
+    #     ) :: Nil,
+    #     Nil
+    # )
+
+    # Runtime(
+    #     CopyTerm(
+    #         Node(
+    #             I0,
+    #             Var(I0) :: Node(I1, Nil) :: Nil
+    #         )
+    #     ) :: Nil,
+    #     Nil
+    # )
+
+    # URRS
+    # Sum
+    # I0 - Zero
+    # I1 - Succ
+    # I2 - Program
+    Runtime(
+        RunRRS(
+            # rules
+            # Program(Succ(x), y) = Program(x, Succ(y))
+            Rule(
+                Node(
+                    I2,
+                    Node(I1, Var(I0) :: Nil) :: Var(I1) :: Nil
+                ),
+                Node(
+                    I2,
+                    Var(I0) :: Node(I1, Var(I1) :: Nil) :: Nil
+                )
+            ) :: Nil,
+    
+            # term
+            # Program(Succ(Succ(Zero)), Succ(Zero))
+            Node(
+                I2,
+                Node(
+                    I1,
+                    Node(
+                        I1, Node(I0, Nil) :: Nil
+                    ) :: Nil
+                ) ::
+                Node(
+                    I1, Node(I0, Nil) :: Nil
+                ) ::
+                Nil
+            )
+        ) :: Nil,
+        Nil  # vstack
+    )
+
+    # Runtime(Nil, Nil)

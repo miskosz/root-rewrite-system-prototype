@@ -1,0 +1,99 @@
+# Nat
+
+### begin system ###
+
+const Nil
+type L<'t>:
+    head: 't
+    tail: List<'t>
+alias List<'t>: L<'t> | Nil
+
+open alias RuntimeStackType
+open alias ValueType
+
+type Runtime:
+    stack: List<RuntimeStackType>
+
+@RuntimeStackType
+type Out:
+    value: ValueType
+
+### end system ###
+
+@ValueType
+const E
+@ValueType
+type S:
+    Nat
+alias Nat: S | E
+
+### copy
+
+@RuntimeStackType
+type Copy:
+    Nat
+@ValueType
+type CopyOut:
+    Nat
+    Nat
+@RuntimeStackType
+const Copy2
+
+rule Runtime(Copy(E) :: rstack) -> Runtime(Out(CopyOut(E, E)) :: rstack)
+rule Runtime(Copy(S(a)) :: rstack) -> Runtime(Copy(a) :: Copy2 :: rstack)
+rule Runtime(Out(CopyOut(a1, a2)) :: Copy2 :: rstack) -> Runtime(
+    Out(CopyOut(S(a1), S(a2))) :: rstack
+)
+
+### sum
+### a+b
+
+@RuntimeStackType
+type Sum:
+    Nat
+    Nat
+
+rule Runtime(Sum(a, E) :: rstack) -> Runtime(Out(a) :: rstack)
+rule Runtime(Sum(a, S(b)) :: rstack) -> Runtime(Sum(S(a), b) :: rstack)
+
+### sub
+### max(a-b, 0)
+
+@RuntimeStackType
+type Sub:
+    Nat
+    Nat
+
+rule Runtime(Sub(E, b) :: rstack) -> Runtime(Out(E) :: rstack)
+rule Runtime(Sub(a, E) :: rstack) -> Runtime(Out(a) :: rstack)
+rule Runtime(Sub(S(a), S(b)) :: rstack) -> Runtime(Sub(a, b) :: rstack)
+
+### mul
+### a*b
+
+@RuntimeStackType
+type Mul:
+    Nat
+    Nat
+@RuntimeStackType
+type Mul2:
+    Nat
+@RuntimeStackType
+type Mul3:
+    Nat
+
+rule Runtime(Mul(a, E) :: rstack) -> Runtime(Out(E) :: rstack)
+rule Runtime(Mul(a, S(b)) :: rstack) -> Runtime(Copy(a) :: Mul2(b) :: rstack)
+rule Runtime(Out(CopyOut(a1, a2)) :: Mul2(b) ::rstack) -> Runtime(
+    Mul(a1, b) :: Mul3(a2) :: rstack
+)
+rule Runtime(Out(mul) :: Mul3(b) :: rstack) -> Runtime(Sum(mul, b) :: rstack)
+
+###
+
+input:
+    Runtime(
+        Mul(
+            S(S(S(E))), S(S(E))
+        ) :: Nil
+    )

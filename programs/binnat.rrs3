@@ -1,0 +1,113 @@
+# BinNat
+# List of binary digits, least significant first
+
+### begin system ###
+
+const Nil
+type L<'t>:
+    head: 't
+    tail: List<'t>
+alias List<'t>: L<'t> | Nil
+
+open alias RuntimeStackType
+open alias ValueType
+
+type Runtime:
+    stack: List<RuntimeStackType>
+
+@RuntimeStackType
+type Out:
+    value: ValueType
+
+### end system ###
+
+const B0
+const B1
+alias Bit: B0 | B1
+
+alias BinNat: List<Bit>
+
+### sum
+
+@RuntimeStackType
+type Sum:
+    a: BinNat
+    b: BinNat
+@RuntimeStackType
+type SumImpl:
+    a: BinNat
+    b: BinNat
+    carry: Bit
+    revdone: BinNat
+@RuntimeStackType
+type SumRev:
+    rev: BinNat
+    front: BinNat
+
+
+rule Runtime(Sum(a, b) :: rt) -> Runtime(SumImpl(a, b, B0, Nil) :: rt)
+rule Runtime(SumImpl(Nil, Nil, B0, revdone) :: rt) -> Runtime(
+    SumRev(revdone, Nil) :: rt
+)
+rule Runtime(SumImpl(Nil, Nil, B1, revdone) :: rt) -> Runtime(
+    SumRev(revdone, B1 :: Nil) :: rt
+)
+rule Runtime(SumImpl(a, Nil, carry, revdone) :: rt) -> Runtime(
+    SumImpl(a, B0 :: Nil, carry, revdone) :: rt
+)
+rule Runtime(SumImpl(Nil, b, carry, revdone) :: rt) -> Runtime(
+    SumImpl(B0 :: Nil, b, carry, revdone) :: rt
+)
+# a != Nil, b != Nil
+# 0 + 0 + 0
+rule Runtime(SumImpl(B0 :: at, B0 :: bt, B0, revdone) :: rt) -> Runtime(
+    SumImpl(at, bt, B0, B0 :: revdone) :: rt
+)
+# 0 + 0 + 1
+rule Runtime(SumImpl(B0 :: at, B0 :: bt, B1, revdone) :: rt) -> Runtime(
+    SumImpl(at, bt, B0, B1 :: revdone) :: rt
+)
+rule Runtime(SumImpl(B0 :: at, B1 :: bt, B0, revdone) :: rt) -> Runtime(
+    SumImpl(at, bt, B0, B1 :: revdone) :: rt
+)
+rule Runtime(SumImpl(B1 :: at, B0 :: bt, B0, revdone) :: rt) -> Runtime(
+    SumImpl(at, bt, B0, B1 :: revdone) :: rt
+)
+# 0 + 1 + 1
+rule Runtime(SumImpl(B0 :: at, B1 :: bt, B1, revdone) :: rt) -> Runtime(
+    SumImpl(at, bt, B1, B0 :: revdone) :: rt
+)
+rule Runtime(SumImpl(B1 :: at, B0 :: bt, B1, revdone) :: rt) -> Runtime(
+    SumImpl(at, bt, B1, B0 :: revdone) :: rt
+)
+rule Runtime(SumImpl(B1 :: at, B1 :: bt, B0, revdone) :: rt) -> Runtime(
+    SumImpl(at, bt, B1, B0 :: revdone) :: rt
+)
+# 1 + 1 + 1
+rule Runtime(SumImpl(B1 :: at, B1 :: bt, B1, revdone) :: rt) -> Runtime(
+    SumImpl(at, bt, B1, B1 :: revdone) :: rt
+)
+# sumrev
+rule Runtime(SumRev(Nil, front) :: rt) -> Runtime(Out(front) :: rt)
+rule Runtime(SumRev(bit :: revtail, front) :: rt) -> Runtime(
+    SumRev(revtail, bit :: front) :: rt
+)
+
+###
+
+input:
+    # 6 + 3
+    Runtime(
+        Sum(
+            B0 :: B1 :: B1 :: Nil, B1 :: B1 :: Nil
+        ) :: Nil
+    )
+
+    # # 5 + 1
+    # Runtime(
+    #     Sum(
+    #         B1 :: B0 :: B1 :: Nil, B1 :: Nil
+    #     ) :: Nil
+    # )
+
+
