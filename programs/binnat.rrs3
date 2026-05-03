@@ -3,46 +3,33 @@
 
 ### begin system ###
 
-const Nil
-type L<'t>:
-    head: 't
-    tail: List<'t>
-alias List<'t>: L<'t> | Nil
+type List<'t>:
+    Nil
+    L(head: 't, tail: List<'t>)
 
-open alias RuntimeStackType
-open alias ValueType
+open type CallType
+open type ValueType
 
-type Runtime:
-    stack: List<RuntimeStackType>
+type Runtime(stack: List<CallType>)
 
-@RuntimeStackType
-type Out:
-    value: ValueType
+@CallType
+type Out(value: ValueType)
 
 ### end system ###
 
-const B0
-const B1
-alias Bit: B0 | B1
-
-alias BinNat: List<Bit>
+@ValueType
+type Bit:
+    B0
+    B1
 
 ### sum
 
-@RuntimeStackType
-type Sum:
-    a: BinNat
-    b: BinNat
-@RuntimeStackType
-type SumImpl:
-    a: BinNat
-    b: BinNat
-    carry: Bit
-    revdone: BinNat
-@RuntimeStackType
-type SumRev:
-    rev: BinNat
-    front: BinNat
+@CallType
+type Sum(a: List<Bit>, b: List<Bit>)
+@CallType
+type SumImpl(a: List<Bit>, b: List<Bit>, carry: Bit, revdone: List<Bit>)
+@CallType
+type SumRev(rev: List<Bit>, front: List<Bit>)
 
 
 rule Runtime(Sum(a, b) :: rt) -> Runtime(SumImpl(a, b, B0, Nil) :: rt)
@@ -95,19 +82,16 @@ rule Runtime(SumRev(bit :: revtail, front) :: rt) -> Runtime(
 
 ###
 
-input:
-    # 6 + 3
-    Runtime(
-        Sum(
-            B0 :: B1 :: B1 :: Nil, B1 :: B1 :: Nil
-        ) :: Nil
-    )
+# 6 + 3
+input Runtime(
+    Sum(
+        B0 :: B1 :: B1 :: Nil, B1 :: B1 :: Nil
+    ) :: Nil
+)
 
-    # # 5 + 1
-    # Runtime(
-    #     Sum(
-    #         B1 :: B0 :: B1 :: Nil, B1 :: Nil
-    #     ) :: Nil
-    # )
-
-
+# # 5 + 1
+# input Runtime(
+#     Sum(
+#         B1 :: B0 :: B1 :: Nil, B1 :: Nil
+#     ) :: Nil
+# )

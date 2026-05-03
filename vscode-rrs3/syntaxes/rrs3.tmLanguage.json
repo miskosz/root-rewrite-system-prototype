@@ -19,14 +19,14 @@
       "match": "#.*$"
     },
     "section-keyword": {
-      "match": "\\b(input)\\s*(:)",
+      "match": "\\b(input)\\b\\s*(:)?",
       "captures": {
         "1": { "name": "keyword.control.section.rrs3" },
         "2": { "name": "punctuation.separator.rrs3" }
       }
     },
     "declaration-keyword": {
-      "match": "\\b(open\\s+alias|const|type|alias|rule)\\b",
+      "match": "\\b(open\\s+alias|open\\s+type|open|const|type|alias|rule)\\b",
       "name": "keyword.other.declaration.rrs3"
     },
     "control-keyword": {
