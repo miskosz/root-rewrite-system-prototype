@@ -112,7 +112,6 @@ class Parser {
       } else if (t.kind === "KW" && t.value === "input") {
         if (input) this.err("Duplicate 'input' statement", t.line, t.col);
         this.advance();
-        this.expect("COLON");
         input = this.parsePatternTerm();
       } else if (t.kind === "KW" && (t.value === "rule" || t.value === "for")) {
         rules.push(this.parseRule());
@@ -121,7 +120,7 @@ class Parser {
       }
     }
 
-    if (!input) this.err("Missing 'input:' statement");
+    if (!input) this.err("Missing 'input' statement");
 
     return { signature, rules, input };
   }
