@@ -6,10 +6,12 @@ function escapeHtml(s: string): string {
 
 function collectAliasNames(source: string): Set<string> {
   const names = new Set<string>();
-  const re = /\balias\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?:<[^>]*>)?\s*:/g;
+  const re = /\btype\s+([A-Z][A-Za-z0-9_]*)\s*(?:<[^>]*>)?\s*:\s*(?:#[^\n]*\n\s*)*([A-Z][A-Za-z0-9_]*)?/g;
   let m: RegExpExecArray | null;
-  while ((m = re.exec(source)) !== null) names.add(m[1]);
-  const openRe = /\bopen\s+alias\s+([A-Za-z_][A-Za-z0-9_]*)/g;
+  while ((m = re.exec(source)) !== null) {
+    if (m[2] !== m[1]) names.add(m[1]);
+  }
+  const openRe = /\bopen\s+type\s+([A-Za-z_][A-Za-z0-9_]*)/g;
   while ((m = openRe.exec(source)) !== null) names.add(m[1]);
   return names;
 }

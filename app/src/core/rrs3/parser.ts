@@ -82,32 +82,23 @@ class Parser {
       if (t.kind === "AT") {
         const decorators = this.parseDecorators();
         const next = this.peek();
-        if (!next || next.kind !== "KW" || (next.value !== "type" && next.value !== "const")) {
+        if (!next || next.kind !== "KW" || next.value !== "type") {
           this.err(
-            `Decorators are only allowed on 'type' or 'const' declarations`,
+            `Decorators are only allowed on 'type' declarations`,
             next?.line ?? t.line, next?.col ?? t.col,
           );
         }
-        const nameTok = this.parseTypeOrConstDecl(signature, checkDup);
+        const nameTok = this.parseTypeDecl(signature, checkDup);
         this.applyDecorators(nameTok, decorators, signature);
-      } else if (t.kind === "KW" && (t.value === "const" || t.value === "type")) {
-        this.parseTypeOrConstDecl(signature, checkDup);
-      } else if (t.kind === "KW" && t.value === "alias") {
-        this.advance();
-        const nameTok = this.expect("IDENT");
-        checkDup(nameTok.value, nameTok.line, nameTok.col);
-        const params = this.parseTypeParams();
-        this.expect("COLON");
-        const row = this.parseTypeRefList();
-        signature.set(nameTok.value, { params, childTypes: [row], isAlias: true, isConst: false });
-        this.aliasNames.add(nameTok.value);
+      } else if (t.kind === "KW" && t.value === "type") {
+        this.parseTypeDecl(signature, checkDup);
       } else if (t.kind === "KW" && t.value === "open") {
         this.advance();
-        this.expect("KW", "alias");
+        this.expect("KW", "type");
         const nameTok = this.expect("IDENT");
         checkDup(nameTok.value, nameTok.line, nameTok.col);
         if (this.at("LANGLE")) {
-          this.err(`Open alias '${nameTok.value}' cannot have type parameters`, nameTok.line, nameTok.col);
+          this.err(`Open type '${nameTok.value}' cannot have type parameters`, nameTok.line, nameTok.col);
         }
         const decl: GenericTypeDecl = {
           params: [],
@@ -135,23 +126,163 @@ class Parser {
     return { signature, rules, input };
   }
 
-  /** Parse one `const`/`type` declaration and return its name token. */
-  private parseTypeOrConstDecl(
+  /**
+   * Parse one `type` declaration. Emits a sum-alias entry plus per-variant
+   * constructor entries — except in the collapse case (single variant whose
+   * name equals the header name) where only the constructor entry is emitted.
+   * Returns the header name token (used for decorator binding).
+   */
+  private parseTypeDecl(
     signature: GenericSignature,
     checkDup: (n: string, l: number, c: number) => void,
   ): Token {
-    const kwTok = this.advance(); // `const` or `type`
+    this.advance(); // `type`
     const nameTok = this.expect("IDENT");
-    checkDup(nameTok.value, nameTok.line, nameTok.col);
-    if (kwTok.value === "const") {
-      signature.set(nameTok.value, { params: [], childTypes: [], isAlias: false, isConst: true });
+    const params = this.parseTypeParams();
+
+    type Variant = {
+      nameTok: Token;
+      labels: (string | null)[];
+      slots: TypeRef[];
+    };
+    const variants: Variant[] = [];
+
+    if (this.at("LPAREN")) {
+      // Shorthand product: type Name<params>(args...)
+      variants.push(this.parseVariantArgs(nameTok));
+    } else if (this.at("COLON")) {
+      this.advance();
+      while (true) {
+        const t = this.peek();
+        if (!t) break;
+        if (t.kind !== "IDENT" || !/^[A-Z]/.test(t.value)) break;
+        const vNameTok = this.advance();
+        variants.push(this.parseVariantArgs(vNameTok));
+      }
+      if (variants.length === 0) {
+        this.err(`Expected at least one variant after 'type ${nameTok.value}:'`, nameTok.line, nameTok.col);
+      }
     } else {
-      const params = this.parseTypeParams();
-      this.expect("COLON");
-      const childTypes = this.parseChildTypeRefs();
-      signature.set(nameTok.value, { params, childTypes, isAlias: false, isConst: false });
+      // Shorthand const: type Name (no args, no body)
+      variants.push({ nameTok, labels: [], slots: [] });
     }
+
+    // Validation: duplicate variant names; duplicate labels across variants.
+    const seenVariantNames = new Set<string>();
+    const seenLabels = new Map<string, Token>();
+    for (const v of variants) {
+      if (seenVariantNames.has(v.nameTok.value)) {
+        this.err(`Duplicate variant '${v.nameTok.value}' in type '${nameTok.value}'`, v.nameTok.line, v.nameTok.col);
+      }
+      seenVariantNames.add(v.nameTok.value);
+      for (const lab of v.labels) {
+        if (lab === null) continue;
+        if (seenLabels.has(lab)) {
+          this.err(`Duplicate label '${lab}' in type '${nameTok.value}'`, v.nameTok.line, v.nameTok.col);
+        }
+        seenLabels.set(lab, v.nameTok);
+      }
+    }
+
+    const collapse =
+      variants.length === 1 && variants[0].nameTok.value === nameTok.value;
+
+    if (!collapse) {
+      // Multi-variant: header name must not collide with any variant name.
+      for (const v of variants) {
+        if (v.nameTok.value === nameTok.value) {
+          this.err(
+            `Variant name '${v.nameTok.value}' collides with type header name`,
+            v.nameTok.line, v.nameTok.col,
+          );
+        }
+      }
+    }
+
+    if (collapse) {
+      const v = variants[0];
+      checkDup(nameTok.value, nameTok.line, nameTok.col);
+      const isConst = v.slots.length === 0 && params.length === 0;
+      signature.set(nameTok.value, {
+        params,
+        childTypes: v.slots.map((s) => [s]),
+        isAlias: false,
+        isConst,
+      });
+      return nameTok;
+    }
+
+    // Sum-alias entry.
+    checkDup(nameTok.value, nameTok.line, nameTok.col);
+    const variantRefs: TypeRef[] = variants.map((v) => {
+      const usedParams = computeUsedParams(params, v.slots);
+      return {
+        kind: "concrete",
+        name: v.nameTok.value,
+        args: usedParams.map((p) => ({ kind: "var", name: p })),
+      };
+    });
+    signature.set(nameTok.value, {
+      params,
+      childTypes: [variantRefs],
+      isAlias: true,
+      isConst: false,
+    });
+    this.aliasNames.add(nameTok.value);
+
+    // Per-variant constructor entries.
+    for (const v of variants) {
+      checkDup(v.nameTok.value, v.nameTok.line, v.nameTok.col);
+      const usedParams = computeUsedParams(params, v.slots);
+      const isConst = v.slots.length === 0 && usedParams.length === 0;
+      signature.set(v.nameTok.value, {
+        params: usedParams,
+        childTypes: v.slots.map((s) => [s]),
+        isAlias: false,
+        isConst,
+      });
+    }
+
     return nameTok;
+  }
+
+  /**
+   * Parse the optional `(label?: TypeRef, ...)` body of a variant. If no
+   * `(` follows, the variant has zero slots.
+   */
+  private parseVariantArgs(nameTok: Token): {
+    nameTok: Token;
+    labels: (string | null)[];
+    slots: TypeRef[];
+  } {
+    const labels: (string | null)[] = [];
+    const slots: TypeRef[] = [];
+    if (this.at("LPAREN")) {
+      this.advance();
+      if (!this.at("RPAREN")) {
+        this.parseOneVariantArg(labels, slots);
+        while (this.at("COMMA")) {
+          this.advance();
+          this.parseOneVariantArg(labels, slots);
+        }
+      }
+      this.expect("RPAREN");
+    }
+    return { nameTok, labels, slots };
+  }
+
+  private parseOneVariantArg(labels: (string | null)[], slots: TypeRef[]): void {
+    const t = this.peek();
+    const next = this.tokens[this.pos + 1];
+    if (t && t.kind === "IDENT" && next && next.kind === "COLON") {
+      const labTok = this.advance();
+      this.advance(); // colon
+      labels.push(labTok.value);
+      slots.push(this.parseTypeRef());
+    } else {
+      labels.push(null);
+      slots.push(this.parseTypeRef());
+    }
   }
 
   /** Parse one or more `@Name` decorator tokens. */
@@ -182,7 +313,7 @@ class Parser {
       const openDecl = this.openAliases.get(dec.value);
       if (!openDecl) {
         throw new ParseError(
-          `Unknown open alias '@${dec.value}' (declare it with 'open alias ${dec.value}')`,
+          `Unknown open type '@${dec.value}' (declare it with 'open type ${dec.value}')`,
           dec.line, dec.col,
         );
       }
@@ -240,39 +371,6 @@ class Parser {
       return { kind: "concrete", name: t.value, args };
     }
     this.err(`Expected type reference, got '${t.value}'`, t.line, t.col);
-  }
-
-  /** Parse `TypeRef ( PIPE TypeRef )*`. */
-  private parseTypeRefList(): TypeRef[] {
-    const list: TypeRef[] = [this.parseTypeRef()];
-    while (this.at("PIPE")) {
-      this.advance();
-      list.push(this.parseTypeRef());
-    }
-    return list;
-  }
-
-  /** Parse one or more child type lines, each a pipe-separated set. */
-  private parseChildTypeRefs(): TypeRef[][] {
-    const result: TypeRef[][] = [];
-
-    while (this.pos < this.tokens.length) {
-      const t = this.peek()!;
-      if (t.kind !== "IDENT" && t.kind !== "TYPEVAR") break;
-
-      const next = this.tokens[this.pos + 1];
-
-      // Optional label "name:"
-      if (t.kind === "IDENT" && next && next.kind === "COLON") {
-        this.advance();
-        this.advance();
-      }
-
-      result.push(this.parseTypeRefList());
-    }
-
-    if (result.length === 0) this.err("Expected at least one child type specification");
-    return result;
   }
 
   // -- rules ----------------------------------------------------------------
@@ -362,6 +460,20 @@ class Parser {
 /** Variables start with a lowercase letter. */
 function isVariable(name: string): boolean {
   return /^[a-z]/.test(name);
+}
+
+function collectVarNames(ref: TypeRef, into: Set<string>): void {
+  if (ref.kind === "var") {
+    into.add(ref.name);
+    return;
+  }
+  for (const a of ref.args) collectVarNames(a, into);
+}
+
+function computeUsedParams(parentParams: string[], slots: TypeRef[]): string[] {
+  const used = new Set<string>();
+  for (const s of slots) collectVarNames(s, used);
+  return parentParams.filter((p) => used.has(p));
 }
 
 // ---------------------------------------------------------------------------

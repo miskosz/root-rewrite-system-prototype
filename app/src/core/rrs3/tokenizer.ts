@@ -15,9 +15,9 @@ export type TokenKind =
   | "RANGLE"   // >
   | "COMMA"    // ,
   | "AT"       // @
-  | "KW";      // input, const, type, alias, rule, for, in, open
+  | "KW";      // input, type, rule, for, in, open
 
-export const KEYWORDS = new Set(["input", "const", "type", "alias", "rule", "for", "in", "open"]);
+export const KEYWORDS = new Set(["input", "type", "rule", "for", "in", "open"]);
 
 export interface Token {
   kind: TokenKind;
