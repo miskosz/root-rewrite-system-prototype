@@ -1,4 +1,4 @@
-import type { Term, TermVar, Rule } from "../core/types";
+import type { Term, TermVar, Rule } from "../rrs/types";
 import {
   SVG_NS, NODE_RX, NODE_HEIGHT, FONT_SIZE,
   type LayoutNode, layoutTree, positionTree,

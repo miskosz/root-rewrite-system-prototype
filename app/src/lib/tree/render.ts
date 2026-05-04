@@ -1,4 +1,4 @@
-import type { Term } from "../core/types";
+import type { Term } from "../rrs/types";
 
 export const SVG_NS = "http://www.w3.org/2000/svg";
 
