@@ -1,5 +1,8 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
+@plugin "daisyui" {
+  themes: cupcake --default;
+}
 
 :root {
   --rrs-mono: ui-monospace, "JetBrains Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
@@ -20,21 +23,22 @@ pre.rrs-static {
   font-size: 0.9rem;
   line-height: 1.5;
   padding: 0.75rem 1rem;
-  background: #f8f9fa;
-  border: 1px solid #dee2e6;
-  border-radius: 6px;
+  background: var(--color-base-200);
+  border: 1px solid var(--color-base-300);
+  border-radius: var(--radius-box, 0.5rem);
   overflow-x: auto;
-  color: #212529;
+  color: var(--color-base-content);
 }
 
 /* Embedded CodeMirror editors */
 .rrs-embed { font-family: var(--rrs-mono); }
 .rrs-embed .cm-editor {
-  border: 1px solid #dee2e6;
-  border-radius: 6px;
+  border: 1px solid var(--color-base-300);
+  border-radius: var(--radius-box, 0.5rem);
   font-size: 0.9rem;
+  background: var(--color-base-100);
 }
-.rrs-embed .cm-editor.cm-focused { outline: 2px solid #4361ee; outline-offset: -1px; }
+.rrs-embed .cm-editor.cm-focused { outline: 2px solid var(--color-primary); outline-offset: -1px; }
 .rrs-embed .cm-content { padding: 8px 0; }
 .rrs-embed .cm-scroller { font-family: var(--rrs-mono); line-height: 1.5; }
 
@@ -42,32 +46,17 @@ pre.rrs-static {
   resize: vertical;
   overflow: hidden;
   min-height: 60px;
-  border-radius: 6px;
+  border-radius: var(--radius-box, 0.5rem);
 }
 
 .rrs-controls { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
-.rrs-controls button {
-  padding: 4px 12px;
-  border: 1px solid #dee2e6;
-  border-radius: 4px;
-  background: #fff;
-  font-size: 13px;
-  font-weight: 500;
-  color: #212529;
-  cursor: pointer;
-  font-family: system-ui, -apple-system, sans-serif;
-}
-.rrs-controls button:hover:not(:disabled) { border-color: #4361ee; color: #4361ee; }
-.rrs-controls button:disabled { opacity: 0.4; cursor: default; }
-.rrs-controls .primary { background: #4361ee; color: #fff; border-color: #4361ee; }
-.rrs-controls .primary:hover:not(:disabled) { background: #3a56d4; color: #fff; }
 
 .rrs-tree {
   margin-top: 8px;
   padding: 12px;
-  background: #f8f9fa;
-  border: 1px solid #dee2e6;
-  border-radius: 6px;
+  background: var(--color-base-200);
+  border: 1px solid var(--color-base-300);
+  border-radius: var(--radius-box, 0.5rem);
   min-height: 100px;
   overflow-x: auto;
   display: flex;
@@ -78,12 +67,13 @@ pre.rrs-static {
 .rrs-status {
   margin-top: 6px;
   font-size: 13px;
-  color: #6c757d;
+  color: var(--color-base-content);
+  opacity: 0.7;
   font-family: system-ui, -apple-system, sans-serif;
   min-height: 1.25em;
 }
-.rrs-status.error { color: #e63946; }
-.rrs-status.success { color: #2d6a4f; }
+.rrs-status.error { color: var(--color-error); opacity: 1; }
+.rrs-status.success { color: var(--color-success); opacity: 1; }
 
 /* Playground full-bleed */
 .playground-shell {

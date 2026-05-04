@@ -11,6 +11,7 @@
   },
   "devDependencies": {
     "@types/hast": "^3.0.4",
+    "daisyui": "^5.5.19",
     "hast-util-from-html": "^2.0.3",
     "typescript": "~5.9.3",
     "unist-util-visit": "^5.1.0"
