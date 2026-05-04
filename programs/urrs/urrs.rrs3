@@ -1,0 +1,651 @@
+# URRS implementation
+
+### begin system ###
+
+type List<'t>:
+    Nil
+    L(head: 't, tail: List<'t>)
+
+open type StackType
+
+type Runtime(stack: List<StackType>)
+
+### end system ###
+
+type Nat:
+    E
+    S(Nat)
+
+type Term:
+    Var(Nat)
+    Node(id: Nat, children: List<Term>)
+
+type Bind(var: Var, term: Term)
+
+type Rule(lhs: Term, rhs: Term)
+
+# ---
+
+### CopyNat ###
+
+@StackType
+type CopyNat(Nat)
+@StackType
+type CopyNatOut(Nat, Nat)
+@StackType
+type CopyNat2
+
+rule Runtime(CopyNat(E) :: st) -> Runtime(CopyNatOut(E, E) :: st)
+rule Runtime(CopyNat(S(a)) :: st) -> Runtime(CopyNat(a) :: CopyNat2 :: st)
+rule Runtime(CopyNatOut(a1, a2) :: CopyNat2 :: st) -> Runtime(
+    CopyNatOut(S(a1), S(a2)) :: st
+)
+
+### NatEq ###
+
+@StackType
+type NatEq(Nat, Nat)
+@StackType
+type NatEqOutFalse(Nat, Nat)
+@StackType
+type NatEqOutTrue(Nat, Nat)
+@StackType
+type NatEq2
+
+rule Runtime(NatEq(E, E) :: st) -> Runtime(NatEqOutTrue(E, E) :: st)
+rule Runtime(NatEq(S(a), S(b)) :: st) -> Runtime(
+    NatEq(a, b) :: NatEq2 :: st
+)
+rule Runtime(NatEqOutFalse(a, b) :: NatEq2 :: st) -> Runtime(
+    NatEqOutFalse(S(a), S(b)) :: st
+)
+rule Runtime(NatEqOutTrue(a, b) :: NatEq2 :: st) -> Runtime(
+    NatEqOutTrue(S(a), S(b)) :: st
+)
+rule Runtime(NatEq(a, b) :: st) -> Runtime(NatEqOutFalse(a, b) :: st)
+
+### CopyTerm ###
+
+@StackType
+type CopyTerm(t: Term)
+@StackType
+type CopyTermOut(t1: Term, t2: Term)
+@StackType
+type CopyTerm2
+@StackType
+type CopyTerm3(ch: List<Term>)
+@StackType
+type CopyTerm4(id1: Nat, id2: Nat)
+
+# CopyTerm(Var(id))
+rule Runtime(CopyTerm(Var(id)) :: st) -> Runtime(CopyNat(id) :: CopyTerm2 :: st)
+rule Runtime(CopyNatOut(id1, id2) :: CopyTerm2 :: st) -> Runtime(
+    CopyTermOut(Var(id1), Var(id2)) :: st
+)
+# CopyTerm(Node(id, ch))
+rule Runtime(CopyTerm(Node(id, ch)) :: st) -> Runtime(
+    CopyNat(id) :: CopyTerm3(ch) :: st
+)
+rule Runtime(CopyNatOut(id1, id2) :: CopyTerm3(ch) :: st) -> Runtime(
+    CopyTerms(ch) :: CopyTerm4(id1, id2) :: st
+)
+rule Runtime(CopyTermsOut(ch1, ch2) :: CopyTerm4(id1, id2) :: st) -> Runtime(
+    CopyTermOut(Node(id1, ch1), Node(id2, ch2)) :: st
+)
+
+### CopyTerms ###
+
+@StackType
+type CopyTerms(terms: List<Term>)
+@StackType
+type CopyTermsOut(terms1: List<Term>, terms2: List<Term>)
+@StackType
+type CopyTerms2(List<Term>)
+@StackType
+type CopyTerms3(Term, Term)
+
+# CopyTerms(Nil)
+rule Runtime(CopyTerms(Nil) :: st) -> Runtime(CopyTermsOut(Nil, Nil) :: st)
+# CopyTerms(head :: tail)
+rule Runtime(CopyTerms(head :: tail) :: st) -> Runtime(
+    CopyTerm(head) :: CopyTerms2(tail) :: st
+)
+rule Runtime(CopyTermOut(h1, h2) :: CopyTerms2(tail) :: st) -> Runtime(
+    CopyTerms(tail) :: CopyTerms3(h1, h2) :: st
+)
+rule Runtime(CopyTermsOut(t1, t2) :: CopyTerms3(h1, h2) :: st) -> Runtime(
+    CopyTermsOut(h1 :: t1, h2 :: t2) :: st
+)
+
+# ---------------------
+# ---------------------
+
+# ### FindBind ###
+
+@StackType
+type FindBind(binds: List<Bind>, var: Var)
+@StackType
+type FindBindOutNoMatch(binds: List<Bind>, var: Var)
+@StackType
+type FindBindOutMatch(binds: List<Bind>, var: Var, match: Term)
+@StackType
+type FindBind2(Term, List<Bind>)
+@StackType
+type FindBind3(Nat, Term)
+
+# FindBind(Nil, var)
+rule Runtime(FindBind(Nil, var) :: st) -> Runtime(
+    FindBindOutNoMatch(Nil, var) :: st
+)
+# FindBind(Bind(Var(id), term) :: btail, Var(id))
+rule Runtime(
+    FindBind(Bind(Var(id1), term) :: btail, Var(id2)) :: st
+) -> Runtime(
+    NatEq(id1, id2) :: FindBind2(term, btail) :: st
+)
+rule Runtime(
+    NatEqOutTrue(id1_, id2) :: FindBind2(term, btail) :: st
+) -> Runtime(
+    FindBindOutMatch(btail, Var(id2), term) :: st
+)
+rule Runtime(
+    NatEqOutFalse(id1, id2) :: FindBind2(term, btail) :: st
+) -> Runtime(
+    FindBind(btail, Var(id2)) :: FindBind3(id1, term) :: st
+)
+rule Runtime(
+    FindBindOutMatch(btail, var, matched_term) :: FindBind3(id1, term) :: st
+) -> Runtime(
+    FindBindOutMatch(Bind(Var(id1), term) :: btail, var, matched_term) :: st
+)
+rule Runtime(
+    FindBindOutNoMatch(btail, var) :: FindBind3(id1, term) :: st
+) -> Runtime(
+    FindBindOutNoMatch(Bind(Var(id1), term) :: btail, var) :: st
+)
+
+### Substitute ###
+
+@StackType
+type Substitute(binds: List<Bind>, varterm: Term)
+@StackType
+type SubstituteOut(unused_binds: List<Bind>, varterm: Term)
+@StackType
+type Substitute2
+@StackType
+type Substitute3(id: Nat)
+
+# Substitute(binds, Var(id))
+rule Runtime(Substitute(binds, Var(id)) :: st) -> Runtime(
+    FindBind(binds, Var(id)) :: Substitute2 :: st
+)
+rule Runtime(
+    FindBindOutNoMatch(binds, Var(id)) :: Substitute2 :: st
+) -> Runtime(
+    SubstituteOut(binds, Var(id)) :: st
+)
+rule Runtime(
+    FindBindOutMatch(binds, Var(id), match) :: Substitute2 :: st
+) -> Runtime(
+    SubstituteOut(binds, match) :: st
+)
+# Substitute(binds, Node(id, ch))
+rule Runtime(Substitute(binds, Node(id, ch)) :: st) -> Runtime(
+    SubstituteMany(binds, ch) :: Substitute3(id) :: st
+)
+rule Runtime(
+    SubstituteManyOut(binds, ch) :: Substitute3(id) :: st
+) -> Runtime(
+    SubstituteOut(binds, Node(id, ch)) :: st
+)
+
+### Substitute ###
+
+@StackType
+type SubstituteMany(binds: List<Bind>, terms: List<Term>)
+@StackType
+type SubstituteManyOut(unused_binds: List<Bind>, terms: List<Term>)
+@StackType
+type SubstituteMany2(List<Term>)
+@StackType
+type SubstituteMany3(Term)
+
+# SubstituteMany(binds, Nil)
+rule Runtime(SubstituteMany(binds, Nil) :: st) -> Runtime(
+    SubstituteManyOut(binds, Nil) :: st
+)
+# SubstituteMany(binds, head :: tail)
+rule Runtime(SubstituteMany(binds, head :: tail) :: st) -> Runtime(
+    Substitute(binds, head) :: SubstituteMany2(tail) :: st
+)
+rule Runtime(
+    SubstituteOut(binds, head) :: SubstituteMany2(tail) :: st
+) -> Runtime(
+    SubstituteMany(binds, tail) :: SubstituteMany3(head) :: st
+)
+rule Runtime(
+    SubstituteManyOut(binds, tail) :: SubstituteMany3(head) :: st
+) -> Runtime(
+    SubstituteManyOut(binds, head :: tail) :: st
+)
+
+### ListMerge ###
+
+@StackType
+type ListMerge(List<Bind>, List<Bind>)
+@StackType
+type ListMergeOut(List<Bind>)
+
+rule Runtime(ListMerge(Nil, l2) :: st) -> Runtime(ListMergeOut(l2) :: st)
+rule Runtime(ListMerge(head :: tail, l2) :: st) -> Runtime(
+    ListMerge(tail, head :: l2) :: st
+)
+
+# ---------------------
+# ---------------------
+
+# ### Match ###
+
+# @StackType
+# type Match(term: Term, varterm: Term)
+# @StackType
+# type MatchOutFalse(term: Term, varterm: Term)
+# @StackType
+# type MatchOutTrue(binds: List<Bind>, varterm: Term)
+# @StackType
+# type Match2(id: Z8)
+
+# # Match(t, Var(id)) = MatchOutTrue([Bind(Var(id), t)], Var(id), Var(id))
+# for 'id in Z8:
+# rule Runtime(
+#     Match(t, Var('id)) :: st, vstack
+# ) ->
+#     Runtime(
+#         cstack,
+#         MatchOutTrue(Bind(Var('id), t) :: Nil, Var('id)) :: st
+#     )
+# # Match(
+# #     Node(id, ch1),
+# #     Node(id, ch2)
+# # ) =
+# # | out = MatchChildren(ch1, ch2)
+# # | match out:
+# # |     case MatchChildrenFalse(ch1, ch2):
+# # |         return MatchOutFalse(...)
+# # |     case MatchChildrenTrue(binds, ch1, ch2):
+# # |         return MatchOutTrue(
+# # |             binds,
+# # |             Node(id, ch1),
+# # |             Node(id, ch2)
+# # |         )
+# for 'id in Z8:
+# rule Runtime(
+#     Match(Node('id, ch1), Node('id, ch2)) :: st,
+#     vstack
+# ) ->
+#     Runtime(
+#         MatchChildren(ch1, ch2) :: Match2('id) :: st,
+#         vstack
+#     )
+# for 'id in Z8:
+# rule Runtime(
+#     Match2('id) :: st,
+#     MatchChildrenOutFalse(ch1, ch2) :: st
+# ) ->
+#     Runtime(
+#         cstack,
+#         MatchOutFalse(Node('id, ch1), Node('id, ch2)) :: st
+#     )
+# for 'id in Z8:
+# rule Runtime(
+#     Match2('id) :: st,
+#     MatchChildrenOutTrue(binds, ch2) :: st
+# ) ->
+#     Runtime(
+#         cstack,
+#         MatchOutTrue(binds, Node('id, ch2)) :: st
+#     )
+# # Match(_x, _y) = MatchOut(Match(_x, _y))
+# rule Runtime(
+#     Match(x, y) :: st, vstack
+# ) ->
+#     Runtime(
+#         cstack,
+#         MatchOutFalse(x, y) :: st
+#     )
+
+
+# ### MatchChildren ###
+
+# @StackType
+# type MatchChildren(ch1: List<Term>, ch2: List<Term>)
+# @StackType
+# type MatchChildrenOutFalse(ch1: List<Term>, ch2: List<Term>)
+# @StackType
+# type MatchChildrenOutTrue(binds: List<Bind>, ch2: List<Term>)
+# @StackType
+# type MatchChildren2(tail1: List<Term>, tail2: List<Term>)
+# @StackType
+# type MatchChildren3(head_binds: List<Bind>, h2: Term)
+# @StackType
+# type MatchChildren4(h2: Term, tail2: List<Term>)
+# @StackType
+# type MatchChildren5(h2: Term, tail1: List<Term>, tail2: List<Term>)
+# @StackType
+# type MatchChildren6(head_binds: List<Bind>, tail1: List<Term>, tail2: List<Term>)
+
+# # MatchChildren(Nil, Nil) = MatchChildrenOutTrue(Nil, Nil)
+# rule Runtime(
+#     MatchChildren(Nil, Nil) :: st, vstack
+# ) ->
+#     Runtime(cstack, MatchChildrenOutTrue(Nil, Nil) :: st)
+# # MatchChildren(h1 :: tail1, h2 :: tail2) =
+# # | out = Match(h1, h2)
+# # | if let MatchOutFalse(h1, h2) = out:
+# # |     return MatchChildrenOutFalse(h1 :: tail1, h2 :: tail2)
+# # | MatchOutTrue(head_binds, h1, h2) = out
+# # | out2 = MatchChildren(tail1, tail2)
+# # | if let MatchChildrenOutFalse(tail1, tail2) = out:
+# # |     h1 = Substitute(head_binds, h1)
+# # |     return MatchChildrenOutFalse(h1 :: tail1, h2 :: tail2)
+# # | MatchChildrenOutTrue(tail_binds, tail1, tail2) = out2
+# # | binds = ListMerge(head_binds, tail_binds)
+# # | return MatchChildrenOutTrue(binds, h1 :: tail1, h2 :: tail2)
+# rule Runtime(
+#     MatchChildren(h1 :: tail1, h2 :: tail2) :: st,
+#     vstack
+# ) ->
+#     Runtime(
+#         Match(h1, h2) :: MatchChildren2(tail1, tail2) :: st,
+#         vstack
+#     )
+# rule Runtime(
+#     MatchChildren2(tail1, tail2) :: st,
+#     MatchOutFalse(h1, h2) :: st
+# ) ->
+#     Runtime(
+#         cstack,
+#         MatchChildrenOutFalse(h1 :: tail1, h2 :: tail2) :: st
+#     )
+# rule Runtime(
+#     MatchChildren2(tail1, tail2) :: st,
+#     MatchOutTrue(head_binds, h2) :: st
+# ) ->
+#     Runtime(
+#         MatchChildren(tail1, tail2) ::
+#         MatchChildren3(head_binds, h2) ::
+#             cstack,
+#         vstack
+#     )
+# # - False branch
+# rule Runtime(
+#     MatchChildren3(head_binds, h2) :: st,
+#     MatchChildrenOutFalse(tail1, tail2) :: st
+# ) ->
+#     Runtime(
+#         CopyTerm(h2) ::
+#         MatchChildren6(head_binds, tail1, tail2) :: st,
+#         vstack
+#     )
+# rule Runtime(
+#     MatchChildren6(head_binds, tail1, tail2) :: st,
+#     CopyTermOut(h1, h2) :: st
+# ) ->
+#     Runtime(
+#         Substitute(head_binds, h1) ::
+#         MatchChildren5(h2, tail1, tail2) ::
+#             cstack,
+#         vstack
+#     )
+# rule Runtime(
+#     MatchChildren5(h2, tail1, tail2) :: st,
+#     SubstituteOut(unused_binds, h1) :: st
+# ) ->
+#     Runtime(
+#         cstack,
+#         MatchChildrenOutFalse(h1 :: tail1, h2 :: tail2) :: st
+#     )
+# # - True branch
+# rule Runtime(
+#     MatchChildren3(head_binds, h2) :: st,
+#     MatchChildrenOutTrue(tail_binds, tail2) :: st
+# ) ->
+#     Runtime(
+#         ListMerge(head_binds, tail_binds) ::
+#         MatchChildren4(h2, tail2) ::
+#             cstack,
+#         vstack
+#     )
+# rule Runtime(
+#     MatchChildren4(h2, tail2) :: st,
+#     ListMergeOut(binds) :: st
+# ) ->
+#     Runtime(
+#         cstack,
+#         MatchChildrenOutTrue(binds, h2 :: tail2) :: st
+#     )
+
+
+# # ---------------------
+# # ---------------------
+
+# ### ApplyFirstRule ###
+
+# @StackType
+# type ApplyFirstRule(rules_: List<Rule>, term: Term)
+# @StackType
+# type ApplyFirstRuleMatch(rules_: List<Rule>, newterm: Term)
+# @StackType
+# type ApplyFirstRuleNoMatch(rules_: List<Rule>, term: Term)
+# @StackType
+# type ApplyFirstRule2(rhs: Term, rtail: List<Rule>)
+# @StackType
+# type ApplyFirstRule3(rtail: List<Rule>, binds: List<Bind>, lhs: Term)
+# @StackType
+# type ApplyFirstRule4(rtail: List<Rule>, lhs: Term, rhs: Term)
+# @StackType
+# type ApplyFirstRule5(lhs: Term, rhs: Term)
+
+# # ApplyFirstRule(Nil, term) = ApplyFirstRuleNoMatch(Nil, term)
+# rule Runtime(
+#     ApplyFirstRule(Nil, term) :: st,
+#     vstack
+# ) ->
+#     Runtime(
+#         cstack,
+#         ApplyFirstRuleNoMatch(Nil, term) :: st
+#     )
+# # ApplyFirstRule(Rule(lhs, rhs) :: rtail, term) =
+# # | out = Match(term, lhs):
+# # | if let MatchOutTrue(binds, varterm, lhs):
+# # |     rhs, rhs_copy = CopyTerm(rhs). <-- Potrebujem kopiu rhs
+# # |     newterm = Substitute(binds, rhs_copy)
+# # |     return ApplyFirstRuleMatch(
+# # |         Rule(lhs, rhs) :: rtail,
+# # |         newterm
+# # |     )
+# # | MatchOutFalse(term, lhs) = out
+# # | match ApplyFirstRule(rtail, term)
+# # |     case ApplyFirstRuleMatch(rtail, newterm):
+# # |         return ApplyFirstRuleMatch(Rule(lhs, rhs) ::rtail, newterm)
+# # |     case ApplyFirstRuleNoMatch(rtail, term):
+# # |         return ApplyFirstRuleNoMatch(Rule(lhs, rhs) ::rtail, term)
+# rule Runtime(
+#     ApplyFirstRule(Rule(lhs, rhs) :: rtail, term) :: st,
+#     vstack
+# ) ->
+#     Runtime(
+#         Match(term, lhs) :: ApplyFirstRule2(rhs, rtail) :: st,
+#         vstack
+#     )
+# # - True branch
+# rule Runtime(
+#     ApplyFirstRule2(rhs, rtail) :: st,
+#     MatchOutTrue(binds, lhs) :: st
+# ) ->
+#     Runtime(
+#         CopyTerm(rhs) :: ApplyFirstRule3(rtail, binds, lhs) :: st,
+#         vstack
+#     )
+# rule Runtime(
+#     ApplyFirstRule3(rtail, binds, lhs) :: st,
+#     CopyTermOut(rhs, rhs_copy) :: st
+# ) ->
+#     Runtime(
+#         Substitute(binds, rhs_copy) ::
+#         ApplyFirstRule4(rtail, lhs, rhs) ::
+#             cstack,
+#         vstack
+#     )
+# rule Runtime(
+#     ApplyFirstRule4(rtail, lhs, rhs) :: st,
+#     SubstituteOut(unused_binds, newterm) :: st
+# ) ->
+#     Runtime(
+#         cstack,
+#         ApplyFirstRuleMatch(Rule(lhs, rhs) :: rtail, newterm) :: st
+#     )
+# # - False branch
+# rule Runtime(
+#     ApplyFirstRule2(rhs, rtail) :: st,
+#     MatchOutFalse(term, lhs) :: st
+# ) ->
+#     Runtime(
+#         ApplyFirstRule(rtail, term) :: ApplyFirstRule5(lhs, rhs) :: st,
+#         vstack
+#     )
+
+# rule Runtime(
+#     ApplyFirstRule5(lhs, rhs) :: st,
+#     ApplyFirstRuleMatch(rtail, newterm) :: st
+# ) ->
+#     Runtime(
+#         cstack,
+#         ApplyFirstRuleMatch(Rule(lhs, rhs) :: rtail, newterm) :: st
+#     )
+
+# rule Runtime(
+#     ApplyFirstRule5(lhs, rhs) :: st,
+#     ApplyFirstRuleNoMatch(rtail, term) :: st
+# ) ->
+#     Runtime(
+#         cstack,
+#         ApplyFirstRuleNoMatch(Rule(lhs, rhs) :: rtail, term) :: st
+#     )
+
+
+# ### RunRRS ###
+
+# @StackType
+# type RunRRS(rules_: List<Rule>, input_: Term)
+# @StackType
+# type RunRRSOut(term: Term)
+# @StackType
+# type RunRRS2
+
+# # RunRRS(Nil, t) = RunRRSOut(t)
+# rule Runtime(
+#     RunRRS(Nil, t) :: st,
+#     vstack
+# ) ->
+#     Runtime(
+#         cstack,
+#         RunRRSOut(t) :: st
+#     )
+# # RunRRS(rules, term) =
+# # | match ApplyFirstRule(rules, term)
+# # |     case ApplyFirstRuleMatch(rules, newterm):
+# # |         return_call RunRRS(rules, newterm)
+# # |     case ApplyFirstRuleNoMatch(rules, term):
+# # |         return RunRRSStop(term)
+# rule Runtime(
+#     RunRRS(rules_, term) :: st,
+#     vstack
+# ) ->
+#     Runtime(
+#         ApplyFirstRule(rules_, term) :: RunRRS2 :: st,
+#         vstack
+#     )
+# rule Runtime(
+#     RunRRS2 :: st,
+#     ApplyFirstRuleMatch(rules_, newterm) :: st
+# ) ->
+#     Runtime(
+#         RunRRS(rules_, newterm) :: st,
+#         vstack
+#     )
+# rule Runtime(
+#     RunRRS2 :: st,
+#     ApplyFirstRuleNoMatch(rules_, term) :: st
+# ) ->
+#     Runtime(
+#         cstack,
+#         RunRRSOut(term) :: st
+#     )
+
+# URRS
+# Sum
+# I0 - Zero
+# I1 - Succ
+# I2 - Program
+input
+    # Runtime(
+    #     CopyTerm(
+    #         Node(
+    #             S(S(E)),
+    #             Node(S(E), Var(E) :: Nil) :: Var(S(E)) :: Nil
+    #         )
+    #     ) :: Nil
+    # )
+
+    Runtime(
+        Substitute(
+            Bind(Var(S(S(E))), Node(E, Nil)) ::
+            Bind(Var(S(E)), Node(S(E), Nil)) ::
+            Bind(Var(E), Node(S(S(E)), Nil)) ::
+                Nil,
+            Node(
+                E,
+                Node(
+                    S(E),
+                    Var(S(S(E))) :: Node(E, Nil) :: Nil
+                ) ::
+                Var(S(E)) ::
+                    Nil
+            )
+        ) :: Nil
+    )
+
+    # Runtime(
+    #     RunRRS(
+    #         # rules
+    #         # Program(Succ(x), y) = Program(x, Succ(y))
+    #         Rule(
+    #             Node(
+    #                 I2,
+    #                 Node(I1, Var(I0) :: Nil) :: Var(I1) :: Nil
+    #             ),
+    #             Node(
+    #                 I2,
+    #                 Var(I0) :: Node(I1, Var(I1) :: Nil) :: Nil
+    #             )
+    #         ) :: Nil,
+    
+    #         # term
+    #         # Program(Succ(Succ(Zero)), Succ(Zero))
+    #         Node(
+    #             I2,
+    #             Node(
+    #                 I1,
+    #                 Node(
+    #                     I1, Node(I0, Nil) :: Nil
+    #                 ) :: Nil
+    #             ) ::
+    #             Node(
+    #                 I1, Node(I0, Nil) :: Nil
+    #             ) ::
+    #             Nil
+    #         )
+    #     ) :: Nil,
+    #     Nil  # vstack
+    # )
