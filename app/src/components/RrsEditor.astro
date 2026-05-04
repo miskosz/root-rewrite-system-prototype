@@ -2,16 +2,14 @@
 interface Props {
   code: string;
   height?: string;
-  reset?: boolean;
 }
-const { code, height, reset } = Astro.props;
+const { code, height } = Astro.props;
 ---
 
 <div
   class="rrs-embed not-prose"
   data-rrs-code={code}
   data-rrs-height={height}
-  data-rrs-reset={reset ? "1" : undefined}
 >
   <div class="rrs-editor-mount"></div>
   <div class="rrs-controls"></div>

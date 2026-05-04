@@ -6,6 +6,7 @@ export default defineConfig({
   site: "https://miskosz.github.io",
   base: "/root-rewrite-system-prototype/",
   integrations: [mdx()],
+  devToolbar: { enabled: false },
   markdown: {
     syntaxHighlight: false,
     rehypePlugins: [rehypeRrs],

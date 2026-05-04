@@ -38,6 +38,13 @@ pre.rrs-static {
 .rrs-embed .cm-content { padding: 8px 0; }
 .rrs-embed .cm-scroller { font-family: var(--rrs-mono); line-height: 1.5; }
 
+.rrs-editor-mount {
+  resize: vertical;
+  overflow: hidden;
+  min-height: 60px;
+  border-radius: 6px;
+}
+
 .rrs-controls { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
 .rrs-controls button {
   padding: 4px 12px;
@@ -91,5 +98,5 @@ pre.rrs-static {
   padding: 12px;
   gap: 8px;
 }
-.playground-shell .cm-editor { flex: 1; min-height: 200px; }
+.playground-shell .rrs-editor-mount { flex: 1; min-height: 200px; }
 .playground-shell .rrs-tree { flex: 2; min-height: 0; }

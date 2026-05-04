@@ -14,6 +14,6 @@ export function highlight(source: string): string {
     i = t.end;
   }
   if (i < source.length) out += escapeHtml(source.slice(i));
-  if (out.endsWith("\n") || out === "") out += "\n";
+  if (!out.endsWith("\n")) out += "\n";
   return out;
 }

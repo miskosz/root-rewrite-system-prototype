@@ -9,7 +9,6 @@ import { animateStep, highlightMatch } from "../tree/animate";
 export interface MountOptions {
   initialCode: string;
   height?: string;
-  showResetButton?: boolean;
 }
 
 export function mountRrsEditor(root: HTMLElement, opts: MountOptions): void {
@@ -35,7 +34,7 @@ export function mountRrsEditor(root: HTMLElement, opts: MountOptions): void {
         keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
         rrsLanguage(),
         EditorView.theme({
-          "&": opts.height ? { height: opts.height } : {},
+          "&": { height: "100%" },
           ".cm-scroller": { overflow: "auto" },
         }),
       ],
@@ -54,9 +53,7 @@ export function mountRrsEditor(root: HTMLElement, opts: MountOptions): void {
   const btnStep = mkBtn("Step");
   const btnUndo = mkBtn("Undo");
   const btnRun = mkBtn("Run");
-  const btnReset = opts.showResetButton ? mkBtn("Reset") : null;
   controlsEl.append(btnLoad, btnMatch, btnStep, btnUndo, btnRun);
-  if (btnReset) controlsEl.append(btnReset);
 
   const setStepEnabled = (enabled: boolean) => {
     btnMatch.disabled = !enabled;
@@ -134,14 +131,6 @@ export function mountRrsEditor(root: HTMLElement, opts: MountOptions): void {
   btnRun.addEventListener("click", () => {
     session.run();
   });
-  if (btnReset) {
-    btnReset.addEventListener("click", () => {
-      view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: opts.initialCode } });
-      justStepped = false;
-      session.parse(opts.initialCode);
-    });
-  }
-
   // Auto-load on mount
   session.parse(opts.initialCode);
 }
@@ -150,9 +139,8 @@ export function mountAll(): void {
   document.querySelectorAll<HTMLElement>(".rrs-embed").forEach((el) => {
     if (el.dataset.rrsMounted === "1") return;
     el.dataset.rrsMounted = "1";
-    const code = el.dataset.rrsCode ?? "";
+    const code = (el.dataset.rrsCode ?? "").replace(/\n$/, "");
     const height = el.dataset.rrsHeight;
-    const showReset = el.dataset.rrsReset === "1";
-    mountRrsEditor(el, { initialCode: code, height, showResetButton: showReset });
+    mountRrsEditor(el, { initialCode: code, height });
   });
 }
