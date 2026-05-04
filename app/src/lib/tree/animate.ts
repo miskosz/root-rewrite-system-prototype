@@ -2,7 +2,7 @@ import type { Term, TermVar, Rule } from "../rrs/types";
 import {
   SVG_NS, NODE_RX, NODE_HEIGHT, FONT_SIZE,
   type LayoutNode, layoutTree, positionTree,
-} from "./tree-render";
+} from "./render";
 
 // ── Colors ──────────────────────────────────────────────────────────────
 

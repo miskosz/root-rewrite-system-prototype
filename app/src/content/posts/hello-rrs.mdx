@@ -1,0 +1,44 @@
+---
+title: "Hello, Root Rewrite Systems"
+date: 2026-05-04
+summary: A first taste of RRS — typed trees, pattern matching, and a tiny live interpreter you can poke right inside the page.
+---
+
+import RrsEditor from "../../components/RrsEditor.astro";
+
+Root Rewrite Systems (RRS) are a tiny computation model: define some tree shapes,
+write a few pattern-matching rules, and watch a term reduce to normal form.
+
+Here is the world's smallest RRS — natural numbers and addition:
+
+```rrs
+type Nat:
+    Zero
+    Succ(Nat)
+
+type Add(Nat, Nat)
+
+rule Add(Zero, n) -> n
+rule Add(Succ(m), n) -> Add(m, Succ(n))
+
+input Add(Succ(Succ(Zero)), Succ(Zero))
+```
+
+The block above is just static syntax-highlighted source. The block below is
+*live* — edit it, press **Load**, then **Step** or **Run** to see the term
+rewrite in the tree view:
+
+<RrsEditor height="220px" code={`type Nat:
+    Zero
+    Succ(Nat)
+
+type Add(Nat, Nat)
+
+rule Add(Zero, n) -> n
+rule Add(Succ(m), n) -> Add(m, Succ(n))
+
+input Add(Succ(Succ(Zero)), Succ(Zero))
+`} />
+
+That is the whole idea. The [playground](../playground) gives you the same
+editor with more room to breathe.

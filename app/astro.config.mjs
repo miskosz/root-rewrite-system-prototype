@@ -1,12 +1,13 @@
 import { defineConfig } from "astro/config";
 import mdx from "@astrojs/mdx";
-import tailwindcss from "@tailwindcss/vite";
+import { rehypeRrs } from "./src/lib/rehype-rrs.ts";
 
 export default defineConfig({
   site: "https://miskosz.github.io",
   base: "/root-rewrite-system-prototype/",
   integrations: [mdx()],
-  vite: {
-    plugins: [tailwindcss()],
+  markdown: {
+    syntaxHighlight: false,
+    rehypePlugins: [rehypeRrs],
   },
 });

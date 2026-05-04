@@ -1,0 +1,11 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import RrsEditor from "../components/RrsEditor.astro";
+import { rrs3 } from "../lib/rrs/rrs3";
+---
+<BaseLayout title="Playground — RRS">
+  <section class="px-4 py-4 max-w-6xl mx-auto">
+    <h1 class="text-xl font-semibold mb-3">Playground</h1>
+    <RrsEditor code={rrs3.defaultProgram} height="320px" reset />
+  </section>
+</BaseLayout>

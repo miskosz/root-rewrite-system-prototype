@@ -1,5 +1,7 @@
 # RRS Tutorial Site
 
+**Status: implemented (2026-05-04).** Build succeeds (`cd app && npm run build`). All 10 work items below were completed; deviations and learnings are recorded inline.
+
 ## Context
 
 The repo currently ships a single Vite + TypeScript playground that supports RRS1/RRS2/RRS3. We want to build a tutorial website on top of the same core: multiple long-form posts authored in Markdown, with **live, embedded RRS editors** inline in the prose. The site needs to look nice, be easy to read, and deploy to GitHub Pages.
@@ -142,3 +144,14 @@ app/
 7. Manual cross-check: open a post on a phone-width viewport — prose readable, editor usable, tree scrolls horizontally if needed.
 
 No automated tests exist in the repo and none are added by this plan.
+
+## Implementation learnings
+
+- **Astro 6 + Tailwind 4:** `@astrojs/tailwind` is incompatible (peer dep on Astro 3–5) and `@tailwindcss/vite` blew up against Astro 6's bundled Vite/Rolldown (`Missing field tsconfigPaths on BindingViteResolvePluginConfig`). Switched to `@tailwindcss/postcss` + a `postcss.config.mjs` — works cleanly. Tailwind directives (`@import "tailwindcss"; @plugin "@tailwindcss/typography";`) live in `src/styles/global.css`.
+- **Content collections:** Astro 6 dropped legacy collections — config must be `src/content.config.ts` (not `src/content/config.ts`) and each collection needs an explicit `loader` (used `glob({ pattern: "**/*.mdx", base: "./src/content/posts" })`).
+- **Shiki off:** set `markdown.syntaxHighlight: false` so Shiki doesn't fight our `rehype-rrs` plugin over `language-rrs` blocks.
+- **CM6 highlighting:** RRS3 alias-name detection needs the whole source, so a `StreamLanguage` (line-by-line) is awkward. Instead `lib/editor/cm-rrs.ts` is a `ViewPlugin` that re-runs `classify()` on every doc/viewport update and emits `Decoration.mark({ class: "hl-..." })`. Same `.hl-*` classes as static blocks → single colour scheme.
+- **Tree modules are DOM-coupled** but framework-agnostic; they live under `lib/tree/` and are called only from `lib/embed/mount.ts`.
+- **`prose` vs the editor:** `<RrsEditor />` adds `not-prose` so Tailwind typography doesn't restyle CM6 spans/buttons.
+- **GH Pages base path:** `astro.config.mjs` sets `base: "/root-rewrite-system-prototype/"`; layouts use `import.meta.env.BASE_URL` for nav links to keep dev + prod paths consistent.
+- **Hooks: pages directory** `[...id].astro` dynamic route uses `getCollection` + `render(post)` per Astro 6 API (no more `post.render()`).
