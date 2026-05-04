@@ -45,7 +45,8 @@ export function mountRrsEditor(root: HTMLElement, opts: MountOptions): void {
   const mkBtn = (label: string, primary = false) => {
     const b = document.createElement("button");
     b.textContent = label;
-    if (primary) b.classList.add("primary");
+    b.classList.add("btn", "btn-sm");
+    b.classList.add(primary ? "btn-primary" : "btn-outline");
     return b;
   };
   const btnLoad = mkBtn("Load", true);
