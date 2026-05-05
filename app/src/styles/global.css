@@ -8,8 +8,8 @@
   --cupcake-base-200: #efeae6;
   --cupcake-base-300: #e7e2df;
   --cupcake-base-content: #291334;
-  --cupcake-primary: #65c3c8;
-  --cupcake-primary-hover: #4fb0b5;
+  --cupcake-primary: #6aa9d8;
+  --cupcake-primary-hover: #5494c5;
   --cupcake-primary-content: #ffffff;
   --cupcake-secondary: #ef9fbc;
   --cupcake-accent: #eeaf3a;
@@ -23,8 +23,8 @@ body {
 }
 
 /* Syntax highlighting tokens — shared between static rrs blocks and CodeMirror */
-.hl-keyword { color: #2c8a8f; font-weight: 600; }
-.hl-constructor { color: #0b7285; }
+.hl-keyword { color: #1d5fa8; font-weight: 600; }
+.hl-constructor { color: #126b41; }
 .hl-variable { color: #7048e8; font-style: italic; }
 .hl-alias { color: #c2185b; font-style: italic; }
 .hl-typevar { color: #b8860b; font-style: italic; }
@@ -50,9 +50,12 @@ pre.rrs-static {
   border: 1px solid var(--cupcake-base-300);
   border-radius: 6px;
   font-size: 0.9rem;
-  background: var(--cupcake-base-100);
+  background: #ffffff;
 }
 .rrs-embed .cm-editor.cm-focused { outline: 2px solid var(--cupcake-primary); outline-offset: -1px; }
+.rrs-embed .cm-activeLine { background: #fdfbfa; }
+.rrs-embed .cm-gutters { background: var(--cupcake-base-200); border-right: 1px solid var(--cupcake-base-300); }
+.rrs-embed .cm-activeLineGutter { background: var(--cupcake-base-300); }
 .rrs-embed .cm-content { padding: 8px 0; }
 .rrs-embed .cm-scroller { font-family: var(--rrs-mono); line-height: 1.5; }
 
@@ -68,7 +71,7 @@ pre.rrs-static {
   padding: 4px 12px;
   border: 1px solid var(--cupcake-base-300);
   border-radius: 4px;
-  background: var(--cupcake-base-100);
+  background: #ffffff;
   font-size: 13px;
   font-weight: 500;
   color: var(--cupcake-base-content);
