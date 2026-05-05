@@ -1,4 +1,5 @@
 import type { Term } from "../rrs/types";
+import { treeTheme } from "./theme";
 
 export const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -78,7 +79,7 @@ function renderNode(
     line.setAttribute("y1", String(node.y + NODE_HEIGHT));
     line.setAttribute("x2", String(child.x));
     line.setAttribute("y2", String(child.y));
-    line.setAttribute("stroke", "#888");
+    line.setAttribute("stroke", treeTheme.edge());
     line.setAttribute("stroke-width", "1.5");
     g.appendChild(line);
   }
@@ -92,11 +93,11 @@ function renderNode(
   rect.setAttribute("rx", String(NODE_RX));
 
   if (isRoot && highlightRoot) {
-    rect.setAttribute("fill", "#fde68a");
-    rect.setAttribute("stroke", "#f59e0b");
+    rect.setAttribute("fill", treeTheme.ruleFill());
+    rect.setAttribute("stroke", treeTheme.ruleStroke());
   } else {
-    rect.setAttribute("fill", "#e0f2fe");
-    rect.setAttribute("stroke", "#38bdf8");
+    rect.setAttribute("fill", treeTheme.normalFill());
+    rect.setAttribute("stroke", treeTheme.normalStroke());
   }
   rect.setAttribute("stroke-width", "1.5");
   g.appendChild(rect);
@@ -109,7 +110,7 @@ function renderNode(
   text.setAttribute("dominant-baseline", "central");
   text.setAttribute("font-size", String(FONT_SIZE));
   text.setAttribute("font-family", "monospace");
-  text.setAttribute("fill", "#1e293b");
+  text.setAttribute("fill", treeTheme.nodeText());
   text.textContent = node.term.typeName;
   g.appendChild(text);
 

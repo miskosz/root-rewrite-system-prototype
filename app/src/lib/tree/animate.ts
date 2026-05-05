@@ -3,24 +3,7 @@ import {
   SVG_NS, NODE_RX, NODE_HEIGHT, FONT_SIZE,
   type LayoutNode, layoutTree, positionTree,
 } from "./render";
-
-// ── Colors ──────────────────────────────────────────────────────────────
-
-const RULE_FILL = "#fef3c7";
-const RULE_STROKE = "#f59e0b";
-const EDGE_COLOR = "#888";
-
-/** 8-color palette for variable subtrees (fill, stroke). */
-const VAR_PALETTE: Array<{ fill: string; stroke: string }> = [
-  { fill: "#ede9fe", stroke: "#8b5cf6" }, // violet
-  { fill: "#dbeafe", stroke: "#3b82f6" }, // blue
-  { fill: "#d1fae5", stroke: "#10b981" }, // emerald
-  { fill: "#fce7f3", stroke: "#ec4899" }, // pink
-  { fill: "#ffedd5", stroke: "#f97316" }, // orange
-  { fill: "#e0e7ff", stroke: "#6366f1" }, // indigo
-  { fill: "#ccfbf1", stroke: "#14b8a6" }, // teal
-  { fill: "#fef9c3", stroke: "#eab308" }, // yellow
-];
+import { treeTheme } from "./theme";
 
 // ── Timing ──────────────────────────────────────────────────────────────
 
@@ -101,7 +84,7 @@ function createNodeText(x: number, y: number, label: string): SVGTextElement {
   text.setAttribute("dominant-baseline", "central");
   text.setAttribute("font-size", String(FONT_SIZE));
   text.setAttribute("font-family", "monospace");
-  text.setAttribute("fill", "#1e293b");
+  text.setAttribute("fill", treeTheme.nodeText());
   text.textContent = label;
   return text;
 }
@@ -112,7 +95,7 @@ function createEdge(x1: number, y1: number, x2: number, y2: number): SVGLineElem
   line.setAttribute("y1", String(y1));
   line.setAttribute("x2", String(x2));
   line.setAttribute("y2", String(y2));
-  line.setAttribute("stroke", EDGE_COLOR);
+  line.setAttribute("stroke", treeTheme.edge());
   line.setAttribute("stroke-width", "1.5");
   return line;
 }
@@ -135,16 +118,13 @@ function renderSubtreeGroup(layout: LayoutNode, fill: string, stroke: string): S
   return g;
 }
 
-const NORMAL_FILL = "#e0f2fe";
-const NORMAL_STROKE = "#38bdf8";
-
 /** Render a positioned layout tree into an SVG group with normal (blue) colors. */
 function renderLayoutInto(node: LayoutNode, parent: SVGGElement): void {
   const g = document.createElementNS(SVG_NS, "g");
   for (const child of node.children) {
     g.appendChild(createEdge(node.x, node.y + NODE_HEIGHT, child.x, child.y));
   }
-  g.appendChild(createNodeRect(node.x, node.y, node.nodeWidth, NORMAL_FILL, NORMAL_STROKE));
+  g.appendChild(createNodeRect(node.x, node.y, node.nodeWidth, treeTheme.normalFill(), treeTheme.normalStroke()));
   g.appendChild(createNodeText(node.x, node.y, node.term.typeName));
   parent.appendChild(g);
   for (const child of node.children) {
@@ -183,6 +163,9 @@ export function highlightMatch(
   container: HTMLElement,
 ): void {
   const padding = 20;
+  const ruleFill = treeTheme.ruleFillSoft();
+  const ruleStroke = treeTheme.ruleStroke();
+  const palette = treeTheme.varPalette();
   const layout = layoutTree(term);
   positionTree(layout, 0, 0);
 
@@ -216,7 +199,7 @@ export function highlightMatch(
   // Rule-structure nodes in yellow
   for (const rn of collectRuleNodes(annotated)) {
     const g = document.createElementNS(SVG_NS, "g");
-    g.appendChild(createNodeRect(rn.x, rn.y, rn.nodeWidth, RULE_FILL, RULE_STROKE));
+    g.appendChild(createNodeRect(rn.x, rn.y, rn.nodeWidth, ruleFill, ruleStroke));
     g.appendChild(createNodeText(rn.x, rn.y, rn.term.typeName));
     rootG.appendChild(g);
   }
@@ -224,7 +207,7 @@ export function highlightMatch(
   // Variable subtrees in palette colors
   let colorIdx = 0;
   for (const varLayout of varLayouts.values()) {
-    const c = VAR_PALETTE[colorIdx % VAR_PALETTE.length];
+    const c = palette[colorIdx % palette.length];
     rootG.appendChild(renderSubtreeGroup(varLayout, c.fill, c.stroke));
     colorIdx++;
   }
@@ -245,6 +228,9 @@ export async function animateStep(
 ): Promise<void> {
   // ── Layout both trees ──
   const padding = 20;
+  const ruleFill = treeTheme.ruleFillSoft();
+  const ruleStroke = treeTheme.ruleStroke();
+  const palette = treeTheme.varPalette();
 
   const oldLayout = layoutTree(oldTerm);
   const newLayout = layoutTree(newTerm);
@@ -297,7 +283,7 @@ export async function animateStep(
   const oldRuleGs: SVGGElement[] = [];
   for (const rn of oldRuleNodes) {
     const g = document.createElementNS(SVG_NS, "g");
-    g.appendChild(createNodeRect(rn.x, rn.y, rn.nodeWidth, RULE_FILL, RULE_STROKE));
+    g.appendChild(createNodeRect(rn.x, rn.y, rn.nodeWidth, ruleFill, ruleStroke));
     g.appendChild(createNodeText(rn.x, rn.y, rn.term.typeName));
     rootG.appendChild(g);
     oldRuleGs.push(g);
@@ -317,7 +303,7 @@ export async function animateStep(
   const varColors = new Map<string, { fill: string; stroke: string }>();
   let colorIdx = 0;
   for (const name of oldVarLayouts.keys()) {
-    varColors.set(name, VAR_PALETTE[colorIdx % VAR_PALETTE.length]);
+    varColors.set(name, palette[colorIdx % palette.length]);
     colorIdx++;
   }
 
@@ -340,7 +326,7 @@ export async function animateStep(
   for (const rn of newRuleNodes) {
     const g = document.createElementNS(SVG_NS, "g");
     g.setAttribute("opacity", "0");
-    g.appendChild(createNodeRect(rn.x, rn.y, rn.nodeWidth, RULE_FILL, RULE_STROKE));
+    g.appendChild(createNodeRect(rn.x, rn.y, rn.nodeWidth, ruleFill, ruleStroke));
     g.appendChild(createNodeText(rn.x, rn.y, rn.term.typeName));
     rootG.appendChild(g);
     newRuleGs.push(g);
