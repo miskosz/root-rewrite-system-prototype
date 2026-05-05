@@ -122,7 +122,7 @@ pre.rrs-static {
 .rrs-controls .primary:active:not(:disabled) { background: var(--color-primary-active); border-color: var(--color-primary-active); }
 
 .rrs-tree {
-  margin-top: 8px;
+  margin-top: 4px;
   padding: 12px;
   background: var(--color-surface-2);
   border: 1px solid var(--color-surface-3);
@@ -135,7 +135,7 @@ pre.rrs-static {
 }
 
 .rrs-status {
-  margin-top: 6px;
+  margin-top: 12px;
   font-size: 13px;
   color: var(--color-muted);
   font-family: system-ui, -apple-system, sans-serif;
