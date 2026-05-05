@@ -3,16 +3,33 @@
 
 :root {
   --rrs-mono: ui-monospace, "JetBrains Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
+  /* daisyUI cupcake palette */
+  --cupcake-base-100: #faf7f5;
+  --cupcake-base-200: #efeae6;
+  --cupcake-base-300: #e7e2df;
+  --cupcake-base-content: #291334;
+  --cupcake-primary: #65c3c8;
+  --cupcake-primary-hover: #4fb0b5;
+  --cupcake-primary-content: #ffffff;
+  --cupcake-secondary: #ef9fbc;
+  --cupcake-accent: #eeaf3a;
+  --cupcake-muted: #6b5876;
+  --cupcake-error: #e85c6c;
+}
+
+body {
+  background: var(--cupcake-base-100);
+  color: var(--cupcake-base-content);
 }
 
 /* Syntax highlighting tokens — shared between static rrs blocks and CodeMirror */
-.hl-keyword { color: #4361ee; font-weight: 600; }
+.hl-keyword { color: #2c8a8f; font-weight: 600; }
 .hl-constructor { color: #0b7285; }
 .hl-variable { color: #7048e8; font-style: italic; }
-.hl-alias { color: #d6336c; font-style: italic; }
-.hl-typevar { color: #c07800; font-style: italic; }
-.hl-comment { color: #6c757d; font-style: italic; }
-.hl-operator { color: #868e96; }
+.hl-alias { color: #c2185b; font-style: italic; }
+.hl-typevar { color: #b8860b; font-style: italic; }
+.hl-comment { color: var(--cupcake-muted); font-style: italic; }
+.hl-operator { color: #8a7a92; }
 
 /* Static fenced code blocks (`rrs) */
 pre.rrs-static {
@@ -20,21 +37,22 @@ pre.rrs-static {
   font-size: 0.9rem;
   line-height: 1.5;
   padding: 0.75rem 1rem;
-  background: #f8f9fa;
-  border: 1px solid #dee2e6;
+  background: var(--cupcake-base-200);
+  border: 1px solid var(--cupcake-base-300);
   border-radius: 6px;
   overflow-x: auto;
-  color: #212529;
+  color: var(--cupcake-base-content);
 }
 
 /* Embedded CodeMirror editors */
 .rrs-embed { font-family: var(--rrs-mono); }
 .rrs-embed .cm-editor {
-  border: 1px solid #dee2e6;
+  border: 1px solid var(--cupcake-base-300);
   border-radius: 6px;
   font-size: 0.9rem;
+  background: var(--cupcake-base-100);
 }
-.rrs-embed .cm-editor.cm-focused { outline: 2px solid #4361ee; outline-offset: -1px; }
+.rrs-embed .cm-editor.cm-focused { outline: 2px solid var(--cupcake-primary); outline-offset: -1px; }
 .rrs-embed .cm-content { padding: 8px 0; }
 .rrs-embed .cm-scroller { font-family: var(--rrs-mono); line-height: 1.5; }
 
@@ -48,25 +66,25 @@ pre.rrs-static {
 .rrs-controls { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
 .rrs-controls button {
   padding: 4px 12px;
-  border: 1px solid #dee2e6;
+  border: 1px solid var(--cupcake-base-300);
   border-radius: 4px;
-  background: #fff;
+  background: var(--cupcake-base-100);
   font-size: 13px;
   font-weight: 500;
-  color: #212529;
+  color: var(--cupcake-base-content);
   cursor: pointer;
   font-family: system-ui, -apple-system, sans-serif;
 }
-.rrs-controls button:hover:not(:disabled) { border-color: #4361ee; color: #4361ee; }
+.rrs-controls button:hover:not(:disabled) { border-color: var(--cupcake-primary); color: var(--cupcake-primary); }
 .rrs-controls button:disabled { opacity: 0.4; cursor: default; }
-.rrs-controls .primary { background: #4361ee; color: #fff; border-color: #4361ee; }
-.rrs-controls .primary:hover:not(:disabled) { background: #3a56d4; color: #fff; }
+.rrs-controls .primary { background: var(--cupcake-primary); color: var(--cupcake-primary-content); border-color: var(--cupcake-primary); }
+.rrs-controls .primary:hover:not(:disabled) { background: var(--cupcake-primary-hover); border-color: var(--cupcake-primary-hover); color: var(--cupcake-primary-content); }
 
 .rrs-tree {
   margin-top: 8px;
   padding: 12px;
-  background: #f8f9fa;
-  border: 1px solid #dee2e6;
+  background: var(--cupcake-base-200);
+  border: 1px solid var(--cupcake-base-300);
   border-radius: 6px;
   min-height: 100px;
   overflow-x: auto;
@@ -78,12 +96,12 @@ pre.rrs-static {
 .rrs-status {
   margin-top: 6px;
   font-size: 13px;
-  color: #6c757d;
+  color: var(--cupcake-muted);
   font-family: system-ui, -apple-system, sans-serif;
   min-height: 1.25em;
 }
-.rrs-status.error { color: #e63946; }
-.rrs-status.success { color: #2d6a4f; }
+.rrs-status.error { color: var(--cupcake-error); }
+.rrs-status.success { color: #1f8a5f; }
 
 /* Playground full-bleed */
 .playground-shell {
