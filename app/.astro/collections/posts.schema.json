@@ -12,6 +12,9 @@
     "summary": {
       "type": "string"
     },
+    "author": {
+      "type": "string"
+    },
     "draft": {
       "type": "boolean"
     },
