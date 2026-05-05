@@ -128,22 +128,27 @@ function monomorphizeOnce(prog: GenericProgram): Program {
   };
 
   // -- Walk the input term top-down. Root must be non-generic. --
+  const inputLine = prog.input.line;
+  const inputCol = prog.input.col;
   if (prog.input.kind === "variable") {
-    throw new ParseError(`Input cannot be a variable`, 0, 0);
+    throw new ParseError(`Input cannot be a variable`, inputLine, inputCol);
   }
   const rootName = prog.input.ctor;
   const rootDecl = sig.get(rootName);
   if (!rootDecl) {
-    throw new ParseError(`Unknown type '${rootName}' in input`, 0, 0);
+    throw new ParseError(`Unknown type '${rootName}' in input`, inputLine, inputCol);
   }
   if (rootDecl.params.length > 0) {
     throw new ParseError(
       `Input root constructor '${rootName}' must be non-generic, but it has type parameters`,
-      0, 0,
+      inputLine, inputCol,
     );
   }
   if (rootDecl.isAlias) {
-    throw new ParseError(`Alias '${rootName}' cannot be used as a term constructor`, 0, 0);
+    throw new ParseError(
+      `Alias '${rootName}' cannot be used as a term constructor`,
+      inputLine, inputCol,
+    );
   }
   const inputRootRef: ConcreteRef = { kind: "concrete", name: rootName, args: [] };
   const concreteInput = walkTerm(prog.input, inputRootRef, sig, schedule);
@@ -468,13 +473,13 @@ function walkTerm(
   schedule: (ref: ConcreteRef) => string,
 ): Term {
   if (pt.kind === "variable") {
-    throw new ParseError(`Input cannot contain variables`, 0, 0);
+    throw new ParseError(`Input cannot contain variables`, pt.line, pt.col);
   }
   const matched = resolveCtor([expected], new Map(), pt, sig);
   if (!matched || matched.kind !== "concrete") {
     throw new ParseError(
       `Constructor '${pt.ctor}' does not match expected type '${mangleRef(expected)}'`,
-      0, 0,
+      pt.line, pt.col,
     );
   }
   const decl = sig.get(matched.name)!;
@@ -483,7 +488,7 @@ function walkTerm(
   if (pt.children.length !== decl.childTypes.length) {
     throw new ParseError(
       `Constructor '${pt.ctor}' expects ${decl.childTypes.length} children, got ${pt.children.length}`,
-      0, 0,
+      pt.line, pt.col,
     );
   }
   const children: Term[] = [];
@@ -491,13 +496,13 @@ function walkTerm(
     const slot = decl.childTypes[i];
     const childPt = pt.children[i];
     if (childPt.kind === "variable") {
-      throw new ParseError(`Input cannot contain variables`, 0, 0);
+      throw new ParseError(`Input cannot contain variables`, childPt.line, childPt.col);
     }
     const childExpected = resolveCtor(slot, env, childPt, sig);
     if (!childExpected) {
       throw new ParseError(
         `Constructor '${childPt.ctor}' does not match any member of slot ${i + 1} for '${pt.ctor}'`,
-        0, 0,
+        childPt.line, childPt.col,
       );
     }
     children.push(walkTerm(childPt, childExpected, sig, schedule));
@@ -535,19 +540,19 @@ function instantiateRule(
       if (!decl) {
         throw new ParseError(
           `Rule ${index + 1}: unknown constructor '${rhsRoot.ctor}'`,
-          0, 0,
+          rhsRoot.line, rhsRoot.col,
         );
       }
       if (decl.isAlias) {
         throw new ParseError(
           `Rule ${index + 1}: alias '${rhsRoot.ctor}' cannot be used as a constructor`,
-          0, 0,
+          rhsRoot.line, rhsRoot.col,
         );
       }
       if (decl.params.length > 0) {
         throw new ParseError(
           `Rule ${index + 1}: cannot infer type arguments for RHS root constructor '${rhsRoot.ctor}'`,
-          0, 0,
+          rhsRoot.line, rhsRoot.col,
         );
       }
       rhsExpected = { kind: "concrete", name: rhsRoot.ctor, args: [] };

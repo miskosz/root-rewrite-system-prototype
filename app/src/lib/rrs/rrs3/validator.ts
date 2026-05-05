@@ -21,7 +21,7 @@ export function validateGeneric(prog: GenericProgram): void {
     const declared = new Set(decl.params);
     for (const slot of decl.childTypes) {
       for (const ref of slot) {
-        validateTypeRef(ref, declared, sig, `type/alias '${name}'`);
+        validateTypeRef(ref, declared, sig, `type/alias '${name}'`, decl.line, decl.col);
       }
     }
   }
@@ -64,28 +64,30 @@ function validateTypeRef(
   declaredVars: Set<string>,
   sig: GenericSignature,
   context: string,
+  line: number,
+  col: number,
 ): void {
   if (ref.kind === "var") {
     if (!declaredVars.has(ref.name)) {
       throw new ParseError(
         `${context}: undeclared type variable '${ref.name}'`,
-        0, 0,
+        line, col,
       );
     }
     return;
   }
   const decl = sig.get(ref.name);
   if (!decl) {
-    throw new ParseError(`${context}: unknown type '${ref.name}'`, 0, 0);
+    throw new ParseError(`${context}: unknown type '${ref.name}'`, line, col);
   }
   if (ref.args.length !== decl.params.length) {
     throw new ParseError(
       `${context}: type '${ref.name}' expects ${decl.params.length} type argument(s), got ${ref.args.length}`,
-      0, 0,
+      line, col,
     );
   }
   for (const arg of ref.args) {
-    validateTypeRef(arg, declaredVars, sig, context);
+    validateTypeRef(arg, declaredVars, sig, context, line, col);
   }
 }
 
@@ -120,7 +122,7 @@ function validateGenericRule(rule: GenericRule, index: number, sig: GenericSigna
     if (c > 1) {
       throw new ParseError(
         `Rule ${index + 1}: variable '${v}' appears ${c} times on left side (must be linear)`,
-        0, 0,
+        rule.left.line, rule.left.col,
       );
     }
   }
@@ -129,7 +131,7 @@ function validateGenericRule(rule: GenericRule, index: number, sig: GenericSigna
     if (c > 1) {
       throw new ParseError(
         `Rule ${index + 1}: variable '${v}' appears ${c} times on right side (must be linear)`,
-        0, 0,
+        rule.right.line, rule.right.col,
       );
     }
   }
@@ -139,7 +141,7 @@ function validateGenericRule(rule: GenericRule, index: number, sig: GenericSigna
     if (!leftVars.has(v)) {
       throw new ParseError(
         `Rule ${index + 1}: variable '${v}' appears in right side but not in left side`,
-        0, 0,
+        rule.right.line, rule.right.col,
       );
     }
   }
@@ -155,7 +157,10 @@ function validateGenericRule(rule: GenericRule, index: number, sig: GenericSigna
   }
 
   if (rule.left.kind === "variable") {
-    throw new ParseError(`Rule ${index + 1}: left side cannot be a bare variable`, 0, 0);
+    throw new ParseError(
+      `Rule ${index + 1}: left side cannot be a bare variable`,
+      rule.left.line, rule.left.col,
+    );
   }
 }
 

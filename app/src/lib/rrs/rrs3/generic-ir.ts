@@ -25,6 +25,9 @@ export interface GenericTypeDecl {
    * Populated by `@OpenAlias` decorators on generic `type` declarations.
    */
   genericMembers?: Set<string>;
+  /** Source location of the declaration's name token. */
+  line: number;
+  col: number;
 }
 
 export type GenericSignature = Map<string, GenericTypeDecl>;

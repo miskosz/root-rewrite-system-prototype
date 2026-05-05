@@ -105,6 +105,8 @@ class Parser {
           childTypes: [[]],
           isAlias: true,
           isConst: false,
+          line: nameTok.line,
+          col: nameTok.col,
         };
         signature.set(nameTok.value, decl);
         this.aliasNames.add(nameTok.value);
@@ -207,6 +209,8 @@ class Parser {
         childTypes: v.slots.map((s) => [s]),
         isAlias: false,
         isConst,
+        line: nameTok.line,
+        col: nameTok.col,
       });
       return nameTok;
     }
@@ -226,6 +230,8 @@ class Parser {
       childTypes: [variantRefs],
       isAlias: true,
       isConst: false,
+      line: nameTok.line,
+      col: nameTok.col,
     });
     this.aliasNames.add(nameTok.value);
 
@@ -239,6 +245,8 @@ class Parser {
         childTypes: v.slots.map((s) => [s]),
         isAlias: false,
         isConst,
+        line: v.nameTok.line,
+        col: v.nameTok.col,
       });
     }
 
