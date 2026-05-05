@@ -8,8 +8,8 @@
   --cupcake-base-200: #efeae6;
   --cupcake-base-300: #e7e2df;
   --cupcake-base-content: #291334;
-  --cupcake-primary: #6aa9d8;
-  --cupcake-primary-hover: #5494c5;
+  --cupcake-primary: #3a80c2;
+  --cupcake-primary-hover: #2c6ba6;
   --cupcake-primary-content: #ffffff;
   --cupcake-secondary: #ef9fbc;
   --cupcake-accent: #eeaf3a;
@@ -32,6 +32,7 @@ body {
 .hl-operator { color: #8a7a92; }
 
 /* Static fenced code blocks (`rrs) */
+pre.rrs-static code { background: transparent; padding: 0; border-radius: 0; font-size: inherit; }
 pre.rrs-static {
   font-family: var(--rrs-mono);
   font-size: 0.9rem;
@@ -50,7 +51,8 @@ pre.rrs-static {
   border: 1px solid var(--cupcake-base-300);
   border-radius: 6px;
   font-size: 0.9rem;
-  background: #ffffff;
+  background: #fdfbfa;
+  overflow: hidden;
 }
 .rrs-embed .cm-editor.cm-focused { outline: 2px solid var(--cupcake-primary); outline-offset: -1px; }
 .rrs-embed .cm-activeLine { background: #fdfbfa; }
@@ -78,10 +80,13 @@ pre.rrs-static {
   cursor: pointer;
   font-family: system-ui, -apple-system, sans-serif;
 }
-.rrs-controls button:hover:not(:disabled) { border-color: var(--cupcake-primary); color: var(--cupcake-primary); }
+.rrs-controls button { transition: background 80ms ease, border-color 80ms ease, transform 80ms ease; }
+.rrs-controls button:hover:not(:disabled) { background: var(--cupcake-base-200); border-color: var(--cupcake-muted); }
+.rrs-controls button:active:not(:disabled) { background: var(--cupcake-base-300); transform: translateY(1px); }
 .rrs-controls button:disabled { opacity: 0.4; cursor: default; }
 .rrs-controls .primary { background: var(--cupcake-primary); color: var(--cupcake-primary-content); border-color: var(--cupcake-primary); }
 .rrs-controls .primary:hover:not(:disabled) { background: var(--cupcake-primary-hover); border-color: var(--cupcake-primary-hover); color: var(--cupcake-primary-content); }
+.rrs-controls .primary:active:not(:disabled) { background: #235689; border-color: #235689; }
 
 .rrs-tree {
   margin-top: 8px;

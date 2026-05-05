@@ -7,7 +7,7 @@ interface Props {
 }
 const { href, title, date, summary } = Astro.props;
 ---
-<a href={href} class="block border border-[var(--cupcake-base-300)] bg-[var(--cupcake-base-200)] rounded-lg p-5 hover:border-[var(--cupcake-primary)] transition-colors no-underline">
+<a href={href} class="block border border-[var(--cupcake-base-300)] bg-[#fdfbfa] rounded-lg p-5 hover:border-[var(--cupcake-primary)] transition-colors no-underline">
   <h2 class="text-lg font-semibold text-[var(--cupcake-base-content)]">{title}</h2>
   <p class="text-sm text-[var(--cupcake-muted)] mt-1">
     {date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
