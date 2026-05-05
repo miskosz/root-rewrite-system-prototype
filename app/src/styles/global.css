@@ -24,6 +24,14 @@
   --color-hl-typevar: #b8860b;
   --color-hl-operator: #8a7a92;
 
+}
+
+/* Tree-view tokens read from JS via getComputedStyle. Kept outside @theme
+ * because Tailwind v4 tree-shakes @theme variables it doesn't see referenced
+ * in CSS or source utilities, which would drop these. */
+:root {
+  --rrs-mono: ui-monospace, "JetBrains Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
+
   --color-tree-edge: #888;
   --color-tree-node-text: #1e293b;
   --color-tree-normal-fill: #e0f2fe;
@@ -40,10 +48,6 @@
   --color-var-6-fill: #e0e7ff;  --color-var-6-stroke: #6366f1;
   --color-var-7-fill: #ccfbf1;  --color-var-7-stroke: #14b8a6;
   --color-var-8-fill: #fef9c3;  --color-var-8-stroke: #eab308;
-}
-
-:root {
-  --rrs-mono: ui-monospace, "JetBrains Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
 }
 
 body {

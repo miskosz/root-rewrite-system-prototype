@@ -63,10 +63,8 @@ export function mountRrsEditor(root: HTMLElement, opts: MountOptions): void {
   setStepEnabled(false);
   btnUndo.disabled = true;
 
-  let justStepped = false;
-
   const renderCurrent = () => {
-    if (session.term) renderTree(session.term, treeEl, justStepped);
+    if (session.term) renderTree(session.term, treeEl);
     else treeEl.innerHTML = "";
   };
 
@@ -110,22 +108,18 @@ export function mountRrsEditor(root: HTMLElement, opts: MountOptions): void {
     setStepEnabled(false);
     btnUndo.disabled = true;
     await animateStep(oldTerm, newTerm, rule, substitution, treeEl);
-    justStepped = true;
   });
 
   btnLoad.addEventListener("click", () => {
-    justStepped = false;
     session.parse(view.state.doc.toString());
   });
   btnMatch.addEventListener("click", () => {
-    justStepped = false;
     session.match();
   });
   btnStep.addEventListener("click", () => {
     void session.step();
   });
   btnUndo.addEventListener("click", () => {
-    justStepped = false;
     session.undo();
   });
   btnRun.addEventListener("click", () => {
