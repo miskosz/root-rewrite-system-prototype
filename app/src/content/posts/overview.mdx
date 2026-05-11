@@ -1,0 +1,74 @@
+---
+title: "RRS Overview"
+date: 2026-05-07
+author: Michal Szabados
+summary: A quick overview of RRS, without too much formalism.
+---
+
+import RrsEditor from "../../components/RrsEditor.astro";
+
+## Motivation
+
+It would be amazing to have **a simpler definition of an algorithm**.
+
+In theoretical computer science, we have many computational models. The following is a subjective
+critique:
+
+* **A Turing Machine,** the canonical computational model, is formally a 7-tuple. The definition
+contains special states an symbols. It works on a tape, however there the canonicity starts to
+break -- there are one-tape and many-tape machines, moreover the tapes can be infinite, one-way
+infinite, or finite with an expansion.
+
+* **Lambda Calculus** has a mathematical appeal, however the rewrites are non-deterministic,
+recursion is clumsy, and the model hides that the place to rewrite "needs to be found".
+
+* **Random-Access Machine** is useful as a model for actual computers, however as a mathematical
+definition it is clumsy. Moreover, constant access to integer-indexed registers hides some
+complexity we'd expect from a mathematical model.
+
+* **Recursive Functions** I do not uderstand much (yet) 😅
+
+* ...and many more.
+
+A common practice to reason about algorithms is to pick a computational model of your choice,
+and say that *"they are all essentially equivalent".* But I find that problematic. The reason
+is that there is nuance in how equivalent they are. Yes, usually the reduction preserves time
+complexity classes modulo a constant, or maybe a polynomial factor (hello, one-tape vs. two-tape
+Turing machine 🙂).
+
+I believe we can do better. That we can reason rigorously about sub-polynomial complexities and
+do reductions transparently. That, for example, a logarithmic factor pops up when working with
+unbounded integers.
+
+The hope from a simpler definition would be:
+
+* **Proofs about algorithms** should be simpler, more transparent, and more intuitive.
+
+* Especially, **reasoning about complexity** should be simpler.
+
+* **Writing programs** for the computational model should be simpler.
+
+
+### What Is a Computational Model?
+
+Still on the philosophical, non-rigorous level, what would you say a computational model actually
+is? It certainly has to do with what we can *"compute with finite amount of information".*
+Here is my proposal, in spirit it is a generalisation of a Turing machine:
+
+A computational model works over a **storage**. It consists of:
+
+1. One of finitely many of states
+1. A view over a finite (bounded) portion of storage
+1. A finite transition function for the state and storage
+
+This metadefinition implies:
+
+* We exclude anything that secretely uses infinity (like natural-number addresses in RAM)
+and nondeterminism (like lambda calculus), however we can simulate both easily.
+* We can restrict the storage to be countably infinite, the machine cannot access more sites.
+* As with turing machines, we can get a "constant speedup" by merging several steps together,
+at the cost of instreasing the state size and the storage view window.
+
+DRAFT: motivation for RRS. Merge states and storage. Originally wanted a graph machine.
+
+DRAT: Callout: Stronger Church-Turing thesis. Not only computability, buat also complexity.
