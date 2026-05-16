@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "../../node_modules/rehype-github-alerts/dist/styling/css/index.css";
 @plugin "@tailwindcss/typography";
 
 @theme {
@@ -25,6 +24,23 @@
   --color-hl-typevar: #b8860b;
   --color-hl-operator: #8a7a92;
 
+  /* Callout palette — Tailwind 50/200/800 triples, matching Mintlify.
+   * Icon and body text share the *-800 hue; fill is *-50; border is *-200. */
+  --color-alert-note-fill: #eff6ff;     /* blue-50 */
+  --color-alert-note-border: #bfdbfe;   /* blue-200 */
+  --color-alert-note-ink: #1e40af;      /* blue-800 */
+  --color-alert-tip-fill: #f0fdf4;      /* green-50 */
+  --color-alert-tip-border: #bbf7d0;    /* green-200 */
+  --color-alert-tip-ink: #166534;       /* green-800 */
+  --color-alert-important-fill: #faf5ff; /* purple-50 */
+  --color-alert-important-border: #e9d5ff; /* purple-200 */
+  --color-alert-important-ink: #6b21a8; /* purple-800 */
+  --color-alert-warning-fill: #fefce8;  /* yellow-50 */
+  --color-alert-warning-border: #fef08a; /* yellow-200 */
+  --color-alert-warning-ink: #854d0e;   /* yellow-800 */
+  --color-alert-caution-fill: #fef2f2;  /* red-50 */
+  --color-alert-caution-border: #fecaca; /* red-200 */
+  --color-alert-caution-ink: #991b1b;   /* red-800 */
 }
 
 /* Tree-view tokens read from JS via getComputedStyle. Kept outside @theme
@@ -160,3 +176,76 @@ pre.rrs-static {
 }
 .playground-shell .rrs-editor-mount { flex: 1; min-height: 200px; }
 .playground-shell .rrs-tree { flex: 2; min-height: 0; }
+
+/* Callouts — Mintlify-style restyle of rehype-github-alerts output.
+ * Layout: icon as a left column, no visible "Note"/"Tip" label text,
+ * full 1px tinted border, soft tinted fill, 16px corner radius. */
+.markdown-alert {
+  display: grid;
+  grid-template-columns: 1rem 1fr;
+  column-gap: 0.75rem;
+  margin: 1rem 0;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--color-surface-3);
+  border-radius: 1rem;
+  background: var(--color-surface-2);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+.markdown-alert .markdown-alert-title {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: start;
+  margin: 0;
+  /* hide the "Note"/"Tip"/… label text — Mintlify only shows the icon */
+  font-size: 0;
+  line-height: 1;
+  /* nudge icon down so it aligns with the cap-top of the first text line */
+  padding-top: 0.25rem;
+}
+.markdown-alert > :not(.markdown-alert-title) {
+  grid-column: 2;
+}
+/* prose-lg adds margin to <p>; flatten so the first body line aligns with the icon row */
+.markdown-alert > .markdown-alert-title + * { margin-top: 0; }
+.markdown-alert > :last-child { margin-bottom: 0; }
+/* normalise body sizing so prose-lg doesn't inflate text inside callouts */
+.markdown-alert p { font-size: inherit; line-height: inherit; margin: 0.5rem 0; }
+.markdown-alert p:first-of-type { margin-top: 0; }
+.markdown-alert p:last-of-type { margin-bottom: 0; }
+.markdown-alert .octicon {
+  width: 1rem;
+  height: 1rem;
+  display: block;
+  margin: 0;
+}
+.markdown-alert-note {
+  background: var(--color-alert-note-fill);
+  border-color: var(--color-alert-note-border);
+  color: var(--color-alert-note-ink);
+  fill: var(--color-alert-note-ink);
+}
+.markdown-alert-tip {
+  background: var(--color-alert-tip-fill);
+  border-color: var(--color-alert-tip-border);
+  color: var(--color-alert-tip-ink);
+  fill: var(--color-alert-tip-ink);
+}
+.markdown-alert-important {
+  background: var(--color-alert-important-fill);
+  border-color: var(--color-alert-important-border);
+  color: var(--color-alert-important-ink);
+  fill: var(--color-alert-important-ink);
+}
+.markdown-alert-warning {
+  background: var(--color-alert-warning-fill);
+  border-color: var(--color-alert-warning-border);
+  color: var(--color-alert-warning-ink);
+  fill: var(--color-alert-warning-ink);
+}
+.markdown-alert-caution {
+  background: var(--color-alert-caution-fill);
+  border-color: var(--color-alert-caution-border);
+  color: var(--color-alert-caution-ink);
+  fill: var(--color-alert-caution-ink);
+}
