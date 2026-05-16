@@ -213,6 +213,8 @@ pre.rrs-static {
 .markdown-alert p { font-size: inherit; line-height: inherit; margin: 0.5rem 0; }
 .markdown-alert p:first-of-type { margin-top: 0; }
 .markdown-alert p:last-of-type { margin-bottom: 0; }
+/* prose sets an explicit color on <strong>; inherit the callout ink instead */
+.markdown-alert strong { color: inherit; }
 .markdown-alert .octicon {
   width: 1rem;
   height: 1rem;

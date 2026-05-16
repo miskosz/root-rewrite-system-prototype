@@ -82,7 +82,7 @@ more flexible than a tape while still having a simple definition.
 tree traversal is still possible with tree rotations.
 
 > [!NOTE]
-> It might be a stretch, but I would hope that a stronger version of Church-Turing thesis
+> It might be a stretch, but I would hope that a stronger version of **Church-Turing thesis**
 > can not only be stated, but also proven. On a high level, if a computational model is
 > *"universal enough"*, then not only the same things are computable, but also the complexities
 > must match up to a certain factor.
@@ -93,7 +93,109 @@ tree traversal is still possible with tree rotations.
 > enough in an elegant way.
 
 
-### RRS definition
+## RRS definition
 
-Let *constructors* be a finite set `C`, and *arity* a function from `C` to non-negative integers.
+### Terms as Rooted Trees
+
+Let *signature* be a tuple $\textrm{Sig} = \{\cal C, \textrm{arity}\}$ where $\cal C$ is a finite
+set, and $\textrm{arity}: \cal C \rightarrow \N_0$. We call the elements of $\cal C$ *constructors*.
+
+I'll skip the formal definition of *terms*. They are defined inductively such that 0-arity
+constructors (constants) are terms, and more complex terms respect the arity. Note that we understand
+terms as rooted trees, not as strings.
+
+Similarly, *terms with variables* are informally terms where zero or more subterms might be replaced
+with a variable.
+
+> [!IMPORTANT]
+> **Example.** Let $\cal C = \{\textrm{Zero}, \textrm{Succ}\}$ and
+> $\textrm{arity}(\textrm{Zero}) = 0, \textrm{arity}(\textrm{Succ}) = 1$. Let $x$ be a variable.
+> Then:
+> * $Zero$ and $Succ(Succ(Zero))$ are terms
+> * $Succ(x)$ is a term with a variable
+
+### Rewriting Rules
+
+A *rule* is a tuple $(\textrm{lhs}, \textrm{rhs})$ of terms with variables such that:
+
+1. Every variable occurs on both sides at most once
+1. Every variable in $\textrm{rhs}$ occurs in $\textrm{lhs}$
+
+A rule *matches* a term if there exists a variable substitution that makes $\textrm{lhs}$
+equal to the term. An application of the rule to the term is $\textrm{rhs}$ with the same
+substitution.
+
+Note that this definition only allows "matching at the root", in contrast with the classical
+aproach in term rewrite systems theory which can rewrite subterms.
+
+### Root Rewrite System
+
+For a given signature, a *Root Rewrite System (RRS)* is defined as a list of rules.
+
+Input of an RRS is a term. In one step, the RRS rewrites the current term with the first rule
+in the list that matches. If no rule matches, we call the current term the *normal form* of the
+input term and return it on the output.
+
+#### Example
+
+A simple RRS example below adds two natural numbers.
+
+The code below defines three constructors `Zero`, `Succ` and `Add` with arities 0, 1 and 2.
+We'll explain the exact syntax later. The machine has two rules, `m` and `n` are variables.
+
+Try changing the `input` line.
+
+<RrsEditor height="240px" code={`type Nat:
+    Zero
+    Succ(Nat)
+
+type Add(Nat, Nat)
+
+rule Add(Zero, n) -> n
+rule Add(Succ(m), n) -> Add(m, Succ(n))
+
+input Add(Succ(Succ(Zero)), Succ(Zero))
+`} />
+
+### Definition Notes
+
+#### Algebraic Data Types
+
+The terms as defined above are untyped - there is no restriction which constructors can occur at
+which slots. It is practical to restrict the allowed terms.
+
+We adopt the **algebraic data types** approach. Skipping the formal definition, the syntax
+
+```rrs
+type MyType:
+    Cons1(type11, type12, ...)
+    Cons2(type21, type22, ...)
+    ...
+```
+
+defines a type `MyType` which is sum of two anonymous product types with constructors `Cons1`,
+`Cons2`, etc. The first type is a product type with components of types `type11, type12,` etc.
+
+We introduce a shorthand notation for convenience:
+
+```rrs
+type MyProdType(type1, type2, ...)
+# is a shorthand for:
+type MyProdType:
+    MyProdType(type1, type2, ...)
+
+type MyConstType
+# is a shorthand for:
+type MyConstType:
+    MyConstType()
+```
+
+#### Connections to Existing Systems
+
+TODO
+
+* Term Rewrite Systems
+* Functional programming
+* Rust
+
 
