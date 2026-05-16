@@ -15,8 +15,8 @@ In theoretical computer science, we have many computational models. The followin
 critique:
 
 * **A Turing Machine,** the canonical computational model, is formally a 7-tuple. The definition
-contains special states an symbols. It works on a tape, however there the canonicity starts to
-break -- there are one-tape and many-tape machines, moreover the tapes can be infinite, one-way
+contains special states an symbols. It works on a tape, however there are multiple versions 
+-- there are one-tape and many-tape machines, moreover the tapes can be infinite, one-way
 infinite, or finite with an expansion.
 
 * **Lambda Calculus** has a mathematical appeal, however the rewrites are non-deterministic,
@@ -66,9 +66,28 @@ This metadefinition implies:
 * We exclude anything that secretely uses infinity (like natural-number addresses in RAM)
 and nondeterminism (like lambda calculus), however we can simulate both easily.
 * We can restrict the storage to be countably infinite, the machine cannot access more sites.
-* As with turing machines, we can get a "constant speedup" by merging several steps together,
-at the cost of instreasing the state size and the storage view window.
+* As with Turing machines, we can get a "constant speedup" by merging several steps together,
+at the cost of increasing the state size and the storage view window.
 
-DRAFT: motivation for RRS. Merge states and storage. Originally wanted a graph machine.
+My original idea was to define the storage as a graph, and have one or even more heads operating
+on it. A head could change a symbol at a node, move along an edge, or create a new edge.
+However, such a model was still quite complex and had some technical issues.
 
-DRAT: Callout: Stronger Church-Turing thesis. Not only computability, buat also complexity.
+The RRS model definition, which we give in the next section, comes from a few observations:
+
+1. A tree structure has a good tradoff between how complex it is and what it can express. It is
+more flexible than a tape while still having a simple definition.
+1. One head is enough, it can keep track of multiple subheads.
+1. The head is not needed if the tree is rooted. The state can be stored in the root node and
+tree traversal is still possible with tree rotations.
+
+> [!NOTE]
+> It might be a stretch, but I would hope that a stronger version of Church-Turing thesis
+> can not only be stated, but also proven. On a high level, if a computational model is
+> *"universal enough"*, then not only the same things are computable, but also the complexities
+> must match up to a certain factor.
+>
+> A necessary condition for this is some formalism to define an arbitrary computational model.
+> I think that a universal RRS (see later sections) would be a good candidate. The second
+> interesting thing to explore is how to define *"universality"*, or that a machine is strong
+> enough in an elegant way.

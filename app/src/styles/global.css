@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "../../node_modules/rehype-github-alerts/dist/styling/css/index.css";
 @plugin "@tailwindcss/typography";
 
 @theme {
