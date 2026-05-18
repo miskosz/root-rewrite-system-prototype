@@ -93,7 +93,7 @@ tree traversal is still possible with tree rotations.
 > enough in an elegant way.
 
 
-## RRS definition
+## RRS Definition
 
 ### Terms as Rooted Trees
 
@@ -143,7 +143,8 @@ A simple RRS example below adds two natural numbers.
 The code below defines three constructors `Zero`, `Succ` and `Add` with arities 0, 1 and 2.
 We'll explain the exact syntax later. The machine has two rules, `m` and `n` are variables.
 
-Try changing the `input` line.
+Press repeatedly the `Step` button to simulate the machine. You can also try changing the `input`
+line.
 
 <RrsEditor height="240px" code={`type Nat:
     Zero
@@ -173,8 +174,9 @@ type MyType:
     ...
 ```
 
-defines a type `MyType` which is sum of two anonymous product types with constructors `Cons1`,
-`Cons2`, etc. The first type is a product type with components of types `type11, type12,` etc.
+defines a type `MyType` which is a sum (a union) of two anonymous product types with constructors
+`Cons1`, `Cons2`, etc. The first type is a product type with components of types `type11, type12,`
+etc.
 
 We introduce a shorthand notation for convenience:
 
@@ -190,12 +192,209 @@ type MyConstType:
     MyConstType()
 ```
 
+You can think of a type as a set of terms, defined by rules above.
+
 #### Connections to Existing Systems
+
+**Term Rewrite Systems:** The theory is almost the same, the differences are that 1) rewrites
+happen only at the root; 2) the rules are linear (no double variables); and 3) the first
+matching rule is applied.
+
+**Functional Programming:** Algebraic data types come from functional programming languages.
+Matching is also a paradigm widely used.
+
+## Exercises
+
+We'd like to be able to traverse data structures. We'd also like to be able to call subroutines.
+Without spoiling the fun, try solving the following exercises.
+
+### Exercise 1: Reverse a List
+
+We need some data structures. Let us define `Bit` and `List`:
+
+```rrs
+type Bit:
+    B0
+    B1
+
+type List<'t>:
+    Nil
+    L(head: 't, tail: List<'t>)
+```
+
+The browser language syntax (working name *RRS3 language*) is limited. The identifiers
+consist of alphanumeric characters and underscores, the leading character cannot be a number.
+Lowercase leading characters denote variables, capitals constructors and types. Therefore
+we use `B0` and `B1` for the bit values.
+
+The `List` definition takes a type variable. The compiler does monomorphisation -- it discovers
+which types are used and creates a separate version of the `List` type for each variant. This
+is however only a typing consideration, the terms will simply use `L` and `Nil`. The constructor
+name `L` is non-standard, shall I rename it to `Cons`? Note that parameter names are allowed,
+they don't have a function beyond documentation.
+
+The RRS3 language has syntax sugar `a :: b` for `L(a, b)`.
+
+Task: Write an RRS that reverses a list of bits.
+
+<RrsEditor height="380px" code={`type Bit:
+    B0
+    B1
+
+type List<'t>:
+    Nil
+    L(head: 't, tail: List<'t>)
+
+type Reverse(List<Bit>)
+
+# Add rules here
+#rule Reverse(...) -> ...
+
+# The expected output is "B1 :: B1 :: B0 :: Nil",
+# i.e. "L(B1, L(B1, L(B0, Nil)))"
+input Reverse(B0 :: B1 :: B1 :: Nil)
+`} />
+
+### Exercise 2: Compute Xor of Tree Leaves
+
+The code below defines a binary tree data structure with bits in its leaves. Compute xor
+of the leaf values. Note that you can add new types.
+
+<RrsEditor height="300px" code={`type Tree:
+    B0
+    B1
+    T(left: Tree, right: Tree)
+
+type TreeXor(Tree)
+
+# Add rules here
+#rule TreeXor(...) -> ...
+
+# The expected output is B1
+input TreeXor(T(T(B1, T(B0, B1)), B1))
+`} />
+
+### Exercise 3: Non-destructive Tree Xor
+
+The task is the same as before, however this time besides the xor result, also return the original
+tree intact. Additionally, we define the types more properly.
+
+<RrsEditor height="450px" code={`type Bit:
+    B0
+    B1
+
+type Tree:
+    Leaf(Bit)
+    T(left: Tree, right: Tree)
+
+type BorrowTreeXor(Tree)
+type BorrowTreeXorOut(Tree, Bit)
+
+# Add rules here
+#rule BorrowTreeXor(...) -> ...
+
+# The expected output is:
+# BorrowTreeXorOut(
+#     T(T(Leaf(B1), T(Leaf(B0), Leaf(B1))), Leaf(B1)),
+#     B1
+# )
+input BorrowTreeXor(T(T(Leaf(B1), T(Leaf(B0), Leaf(B1))), Leaf(B1)))
+`} />
+
+## RRS Properties
+
+### RRS Can Simulate a Turing Machine
+
+The core reduction is extremely simple. The root types would be
+`State(List<Alphabet>, List<Alphabet>)` for every state of the TM, and the components are the
+tape to the left, and tape to the right of the head. There is technical work in dealing with
+extending the tape when needed and the halt state.
+
+### Two Constructors Are Enough
+
+Any RRS can be simulated with an RRS with these two constructors with at most
+a constant factor slowdown:
+
+```rrs
+type Tree:
+    E
+    T(Tree, Tree)
+```
+
+Note that this is the smallest possible -- there has to exist a constant (0-arity) constructor,
+and we need at least one other constructor. It is easy to prove that unary is not enough.
+We skip why a binary one is enough, there is a strong hint in the Universal RRS section below.
+
+Note also that the claim can be made very rigorous after we define the universal RRS - then we
+can write the reduction program and reason about the complexity of both the reduction and the
+transformed machine.
+
+### Limited Amount of Variables and Limited Rule Depth Is Enough
+
+This gets more nuanced, and starts to be a mathematical self-gratitifation in trying to push
+the limits as low as possible, ideally both limits at the same time.
+
+On the high level though, it is a corollary of the existence of a universal machine.
+
+Note that is also follows from the fact that RRS can simulate a Turing machine. The reduction
+is as follows: Take the RRS, write a TM that simulates it, and then simulate that TM in RRS
+as explained above. All rules of the resulting RRS will have at most 3 (or 4?) variables and depth
+at most 3 (or 4, depending on the construction).
+
+Note however that going through a TM can slow the machine down. The existence of a universal RRS
+guarantees at most a constant factor slowdown.
+
+
+## Universal RRS
 
 TODO
 
-* Term Rewrite Systems
-* Functional programming
-* Rust
+* The repo contains a full implementation
+* Explain encoding
+* Explain stack
 
+## Complexity and Reductions
 
+TODO
+
+## More Exercises
+
+Just for fun.
+
+### Exercise 4: Is a Palindrome?
+
+Decide if the list on the input is a palindrome. You can use `B0` for false and `B1` for true
+(or define your own `Bool` type if you fancy).
+
+<RrsEditor height="380px" code={`type Bit:
+    B0
+    B1
+
+type List<'t>:
+    Nil
+    L(head: 't, tail: List<'t>)
+
+type IsPalindrome(List<Bit>)
+
+# Add rules here
+#rule IsPalindrome(...) -> ...
+
+# The expected output is true
+input IsPalindrome(B0 :: B1 :: B1 :: B0 :: Nil)
+`} />
+
+### Exercise 5: Binary Integers
+
+So far, we have used the `Nat` type for numbers:
+
+```rrs
+type Nat:
+    Zero
+    Succ(Nat)
+```
+
+The issue is that certain operations would be slow on `Nat`, e.g. addition of would be linear
+in one of the operands. Come up with an alternative representation for non-negative numbers and
+implement addition which takes only logarithmic time.
+
+You can use the `Playground` tab in the top menu.
