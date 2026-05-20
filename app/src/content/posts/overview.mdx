@@ -111,8 +111,8 @@ with a variable.
 > **Example.** Let $\cal C = \{\textrm{Zero}, \textrm{Succ}\}$ and
 > $\textrm{arity}(\textrm{Zero}) = 0, \textrm{arity}(\textrm{Succ}) = 1$. Let $x$ be a variable.
 > Then:
-> * $Zero$ and $Succ(Succ(Zero))$ are terms
-> * $Succ(x)$ is a term with a variable
+> * $\textrm{Zero}$ and $\textrm{Succ}(\textrm{Succ}(\textrm{Zero}))$ are terms
+> * $\textrm{Succ}(x)$ is a term with a variable
 
 ### Rewriting Rules
 
@@ -305,10 +305,10 @@ input BorrowTreeXor(T(T(Leaf(B1), T(Leaf(B0), Leaf(B1))), Leaf(B1)))
 
 ### RRS Can Simulate a Turing Machine
 
-The core reduction is extremely simple. The root types would be
-`State(List<Alphabet>, List<Alphabet>)` for every state of the TM, and the components are the
-tape to the left, and tape to the right of the head. There is technical work in dealing with
-extending the tape when needed and the halt state.
+The simulation takes exactly the same number of steps. The reduction is extremely simple. The root
+types would be `State(List<Alphabet>, List<Alphabet>)` for every state of the TM, and the components
+are the tape to the left, and tape to the right of the head. There is technical work in dealing
+with extending the tape when needed and the halt state.
 
 ### Two Constructors Are Enough
 
@@ -347,11 +347,101 @@ guarantees at most a constant factor slowdown.
 
 ## Universal RRS
 
-TODO
+Universal RRS (URRS) takes on the input another RRS and a term. It simulates the input RRS on
+the term, and outputs the simulated RRS output.
 
-* The repo contains a full implementation
-* Explain encoding
-* Explain stack
+We show that a URRS exists, and that it simulates the input RSS with at most a constant
+factor slowdown, where the constant depends on the simulated RRS. The repository where
+this webpage is hosted contains a full implementation in RRS3.
+
+Term signature is an implicit part of the definition of an RRS. The signature of the URRS
+has a finite number of constructors, but there is no limit to the size of the signature
+of the simulated RRS. Therefore, we have to encode the simulated RRS and the input term on the
+input for the URRS.
+
+> [!NOTE]
+> When doing this formally in the future, I think it might be easier to define a *"Binary RRS"*
+> as an RRS with the two-constructor T/E signature. Then a "Binary URRS", i.e. a Binary RRS that
+> can simulate arbitrary Binary RRS, would be simpler. There still needs to be an encoding for
+> the variables though.
+
+### Input encoding
+
+For input encoding, the signature of the URRS will contain the following.
+Note that the full machine needs more for managing the simulation.
+
+```rrs
+type List<'t>:
+    Nil
+    L(head: 't, tail: List<'t>)
+
+type Nat:
+    Zero
+    Succ(Nat)
+
+type Term:
+    Var(Nat)
+    Node(id: Nat, children: List<Term>)
+
+type Rule(lhs: Term, rhs: Term)
+
+type RunRRS(rules: List<Rule>, input_term: Term)
+```
+
+The type `Term` represents terms with (and also without) variables. We index both the variables
+and constructors. `Var(n)` represents a variable with index `n`, and `Node(n, children)`
+represents a constructor with index `n` and arguments `children`, each of which is another
+term with variables. Note that the encoding does not enforce constructor arity or variable
+linearity.
+
+The rest of the encoding is straightforward.
+
+### Stack Machine
+
+We manage URRS computation via a simple call stack, to which we push functions.
+When a function is finished computing, it replaces itself with its output value on the stack.
+If there are multiple instructions to be executed in a function, every instruction is
+implemented as a minifunction.
+
+Let's explain it and show implementation details by example. We'll implement the TreeXor
+exercise from above. In pseudocode, we want to define Xor and TreeXor:
+
+```rrs
+Xor(0, 0) = 0
+Xor(1, 0) = 0
+Xor(0, 1) = 0
+Xor(1, 1) = 0
+
+TreeXor(0) = 0
+TreeXor(1) = 1
+TreeXor(T(left, right)) = Xor(TreeXor(left), TreeXor(right))
+```
+
+The challenging line is the last one. We want to:
+
+1. Compute `TreeXor left` and remember its value
+1. Compute `TreeXor right` and remember its value
+1. Call `Xor` on the two values
+
+With stack, we implement it as follows:
+
+1. At the start, `TreeXor(T(left, right))` is on the top of the stack
+1. Remove it and push `TreeXor2(right)` and then `TreeXor(left)`
+    * Now `TreeXor(left)` is on the top
+    * `TreeXor2(right)` is just "waiting", storing the value `right` for later
+1. The top two stack elements will eventually become `TreeXor2(right)` and `left_xor_result` on top.
+Replace it with `TreeXor3(left_xor_result)` and `TreeXor(right)` on top.
+1. The top two stack elements will eventually become `TreeXor3(left_xor_result)`
+and `right_xor_result` on top. Replace it with `Xor(left_xor_result, right_xor_result)`.
+1. When the `Xor` computation finishes, the final result will be at the top.
+
+We implement the stack with constructor `Runtime` always as the term root. In URRS,
+we just provide the input (the RunRRS term) as the only item on the stack. Note that
+a stack is simply a list.
+
+Here is the full implementation:
+
+TODO
 
 ## Complexity and Reductions
 
