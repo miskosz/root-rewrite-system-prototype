@@ -3,12 +3,27 @@
 \NeedsTeXFormat{LaTeX2e}
 \ProvidesPackage{rrs}[2026/06/09 Shared preamble for Root Rewrite System notes]
 
+% --- Page layout ------------------------------------------------------------
+% Default: compact A5 + narrow margins, sized for reading in a split-screen
+% editor pane. Pass [print] for a standard A4 / 1in layout:
+%   \usepackage[print]{rrs}
+\newif\ifrrs@screen
+\rrs@screentrue
+\DeclareOption{screen}{\rrs@screentrue}
+\DeclareOption{print}{\rrs@screenfalse}
+\DeclareOption*{\PackageWarning{rrs}{Unknown option '\CurrentOption'}}
+\ProcessOptions\relax
+
 % --- Core typesetting -------------------------------------------------------
 \RequirePackage[T1]{fontenc}
 \RequirePackage{lmodern}
 \RequirePackage[utf8]{inputenc}
 \RequirePackage{microtype}
-\RequirePackage[a4paper,margin=1in]{geometry}
+\ifrrs@screen
+  \RequirePackage[a5paper,margin=12mm]{geometry}
+\else
+  \RequirePackage[a4paper,margin=1in]{geometry}
+\fi
 
 % --- Math -------------------------------------------------------------------
 \RequirePackage{amsmath}
