@@ -1,0 +1,19 @@
+% A second, independent topic — compiles to its own build/scratch.pdf.
+% Copy this file to start a new topic; the shared macros are available via rrs.sty.
+\documentclass[11pt]{article}
+\usepackage{rrs}
+
+\title{Scratch}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+This is a separate document, built into its own PDF. Add one \texttt{.tex} file
+per topic under \texttt{topics/} and \texttt{make} will produce a matching PDF
+in \texttt{build/}.
+
+Shared notation works here too, for example $\Terms(\Sig)$ and $\subst(\tleft)$.
+
+\end{document}

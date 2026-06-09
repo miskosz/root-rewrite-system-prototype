@@ -1,0 +1,15 @@
+# Build output (each topic compiles to its own PDF here).
+build/
+
+# Stray LaTeX aux files, in case anything compiles outside build/.
+*.aux
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.bbl
+*.bcf
+*.blg
+*.run.xml

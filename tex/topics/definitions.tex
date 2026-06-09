@@ -1,0 +1,103 @@
+% Build: `make` (from tex/) → build/definitions.pdf
+\documentclass[11pt]{article}
+\usepackage{rrs}
+
+\title{Root Rewrite Systems: Definitions Test Test}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+Root Rewrite System (RRS) is a computation model operating on \emph{terms}. The
+definitions below use ideas from term rewriting systems (TRS) and functional
+language features in e.g.\ ML / Haskell / Rust.
+
+\section{Signatures and terms}
+
+\begin{definition}[Signature]
+A \emph{signature} is a tuple $\Sig = (\Types, \arity, \childTypes)$ where:
+\begin{itemize}
+  \item $\Types$ is a finite set;
+  \item $\arity \colon \Types \to \N$ is a function;
+  \item $\childTypes \colon T \mapsto \powerset(\Types)^{\arity(T)}$ for
+        $T \in \Types$.
+\end{itemize}
+\end{definition}
+
+\begin{note}
+A signature corresponds to a many-sorted constructor signature in TRS, or an
+algebraic data type definition in functional languages.
+\end{note}
+
+\begin{definition}[Terms]
+Let $\Sig$ be a given signature and $T \in \Sig.\Types$. Recursively define
+$\Terms(T)$, the \emph{terms of type $T$}, such that: denoting
+$\Sig.\arity(T) = k$ and $\Sig.\childTypes(T) = (U_1, \dots, U_k)$, if
+$t_i \in \Terms(T_i')$ for some $T_i' \in U_i$, then
+$T(t_1, \dots, t_k) \in \Terms(T)$.
+
+Let $\Terms(\Sig)$ be the union of terms for all types in $\Sig.\Types$.
+\end{definition}
+
+\begin{example}
+Let $\mathrm{Nat} := (\{\mathrm{Cons}, \mathrm{Zero}\}, \arity, \childTypes)$ with
+$\arity(\mathrm{Zero}) = 0$, $\childTypes(\mathrm{Zero}) = ()$ and
+$\arity(\mathrm{Cons}) = 1$,
+$\childTypes(\mathrm{Cons}) = (\{\mathrm{Cons}, \mathrm{Zero}\})$. Then the
+elements of $\Terms(\mathrm{Nat})$ are $\mathrm{Zero}$, $\mathrm{Cons}(\mathrm{Zero})$,
+$\mathrm{Cons}(\mathrm{Cons}(\mathrm{Zero}))$, and so on.
+
+In the convenient surface notation test 2:
+\begin{rrscode}
+signature:
+    const Zero
+    type Cons:
+        tail: Cons | Zero
+\end{rrscode}
+\end{example}
+
+\section{Variables, substitutions, rules}
+
+\begin{definition}[Terms with variables]
+Let $\Variables$ be a countable set of variables, w.l.o.g.\ disjoint from
+everything else, and let $\Sig$ be a signature. For $T \in \Sig.\Types$ define
+$\TermsVar(T)$, the \emph{terms with variables of type $T$}, such that
+$\Variables \subset \TermsVar(T)$, and (with $k$, $U_i$ as above) if
+$t_i \in \TermsVar(T_i')$ for some $T_i' \in U_i$ then
+$T(t_1, \dots, t_k) \in \TermsVar(T)$.
+\end{definition}
+
+\begin{definition}[Substitution]
+A \emph{substitution} is a map $\subst \colon \Variables \to \Terms(\Sig)$.
+Applying $\subst$ to a term with variables replaces each variable with its image.
+\end{definition}
+
+\begin{definition}[Rewrite rule]
+A \emph{rewrite rule} is a tuple
+$\mathrm{rule} = (\tleft, \tright) \in \TermsVar(\Sig)^2$ such that:
+\begin{itemize}
+  \item every variable in $\tleft$ occurs at most once;
+  \item every variable in $\tright$ occurs at most once;
+  \item every variable in $\tright$ occurs in $\tleft$;
+  \item for any substitution $\subst$ with $\subst(\tleft) \in \Terms(\Sig)$,
+        it holds that $\subst(\tright) \in \Terms(\Sig)$.
+\end{itemize}
+\end{definition}
+
+\begin{definition}[Root Rewrite System]
+A \emph{Root Rewrite System} is a tuple $\mathrm{RRS} = (\Sig, \mathrm{Rules})$
+where $\Sig$ is a signature and $\mathrm{Rules}$ is an ordered list of rules.
+Given an input term $t_0 \in \Terms(\Sig)$, in one \emph{step} the machine
+rewrites $t_i \to t_{i+1}$ using the first applicable rule. The sequence
+terminates at $t_n$ if no rule applies; $t_n$ is then the \emph{normal form} of
+$t_0$ and the output of the machine.
+\end{definition}
+
+\begin{note}
+In TRS terminology this is a \emph{priority root-rewrite system}: rules apply
+only at the root, and the first matching rule wins --- exactly the semantics of
+\texttt{match} / \texttt{case} in functional languages.
+\end{note}
+
+\end{document}

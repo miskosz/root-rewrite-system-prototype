@@ -1,0 +1,64 @@
+% rrs.sty — shared preamble for the RRS topic documents.
+% Each document in topics/ pulls this in with \usepackage{rrs}.
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{rrs}[2026/06/09 Shared preamble for Root Rewrite System notes]
+
+% --- Core typesetting -------------------------------------------------------
+\RequirePackage[T1]{fontenc}
+\RequirePackage{lmodern}
+\RequirePackage[utf8]{inputenc}
+\RequirePackage{microtype}
+\RequirePackage[a4paper,margin=1in]{geometry}
+
+% --- Math -------------------------------------------------------------------
+\RequirePackage{amsmath}
+\RequirePackage{amssymb}
+\RequirePackage{amsthm}
+\RequirePackage{mathtools}
+
+% --- Tables, links, colour --------------------------------------------------
+\RequirePackage{booktabs}
+\RequirePackage{xcolor}
+\RequirePackage[hidelinks]{hyperref}
+
+% --- Code / pseudo-syntax listings ------------------------------------------
+\RequirePackage{listings}
+\lstdefinestyle{rrs}{
+  basicstyle=\ttfamily\small,
+  keywordstyle=\bfseries,
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  frame=single,
+  framesep=6pt,
+  rulecolor=\color{black!25},
+  xleftmargin=4pt,
+  morekeywords={signature,const,type},
+}
+\lstset{style=rrs}
+% \begin{rrscode} ... \end{rrscode} for RRS source blocks.
+\lstnewenvironment{rrscode}{}{}
+
+% --- Theorem-like environments ----------------------------------------------
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\newtheorem{example}[definition]{Example}
+
+\theoremstyle{remark}
+\newtheorem*{note}{Note}
+
+% --- Notation macros --------------------------------------------------------
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\powerset}{\mathcal{P}}
+\newcommand{\Sig}{\mathrm{Signature}}
+\newcommand{\Types}{\mathrm{Types}}
+\newcommand{\arity}{\mathrm{arity}}
+\newcommand{\childTypes}{\mathrm{childTypes}}
+\newcommand{\Terms}{\mathrm{Terms}}
+\newcommand{\TermsVar}{\mathrm{TermsVar}}
+\newcommand{\Variables}{\mathrm{Variables}}
+\newcommand{\subst}{\sigma}            % a substitution
+\newcommand{\tleft}{t_{\mathrm{left}}}
+\newcommand{\tright}{t_{\mathrm{right}}}
+
+\endinput
