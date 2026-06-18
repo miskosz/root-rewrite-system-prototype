@@ -62,16 +62,27 @@
 \theoremstyle{remark}
 \newtheorem*{note}{Note}
 
+% Treat the paragraph following a display block as a "first" paragraph: no
+% indent (LaTeX already does this after \section). A paragraph is only indented
+% when it directly follows prose.
+\RequirePackage{etoolbox}
+\newcommand{\rrs@noindentnext}{\par\@afterindentfalse\@afterheading}
+\AfterEndEnvironment{definition}{\rrs@noindentnext}
+\AfterEndEnvironment{example}{\rrs@noindentnext}
+\AfterEndEnvironment{note}{\rrs@noindentnext}
+
 % --- Notation macros --------------------------------------------------------
 \newcommand{\N}{\mathbb{N}}
 \newcommand{\powerset}{\mathcal{P}}
-\newcommand{\Sig}{\mathrm{Signature}}
+\newcommand{\Sig}{\mathrm{Sig}}
 \newcommand{\Types}{\mathrm{Types}}
+\newcommand{\Constructors}{\mathrm{Constructors}}
 \newcommand{\arity}{\mathrm{arity}}
 \newcommand{\childTypes}{\mathrm{childTypes}}
 \newcommand{\Terms}{\mathrm{Terms}}
 \newcommand{\TermsVar}{\mathrm{TermsVar}}
 \newcommand{\Variables}{\mathrm{Variables}}
+\newcommand{\Var}{\mathrm{Var}}
 \newcommand{\subst}{\sigma}            % a substitution
 \newcommand{\tleft}{t_{\mathrm{left}}}
 \newcommand{\tright}{t_{\mathrm{right}}}
