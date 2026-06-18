@@ -16,6 +16,10 @@ language features in e.g.\ ML / Haskell / Rust.
 
 Definitions in this section follow the term rewriting systems theory.
 
+Throughout, we fix a countably infinite set $\Variables$ of \emph{variables},
+disjoint from any other set we consider (in particular from the constructors of
+any signature).
+
 \begin{definition}[Signature]
 A \emph{signature} is a tuple $(\Constructors, \arity)$ where:
 \begin{itemize}
@@ -27,18 +31,17 @@ Constructors of arity zero are called \emph{constants}, of arity one
 \end{definition}
 
 \begin{definition}[Terms]
-Let $(\Constructors, \arity)$ be a given signature. Let $\Variables$ be at most a countable
-set disjoint from $\Constructors$. Define $\Terms(\Variables)$, the set of
-\emph{terms with variables,} as the smallest set such that:
+Let $(\Constructors, \arity)$ be a given signature. For $V \subset \Variables$ define $\Terms(V)$, the set of
+\emph{terms with variables in $V$,} as the smallest set such that:
 \begin{itemize}
-  \item $\Variables \subset \Terms(\Variables)$;
-  \item For a constant $C \in \Constructors$ we have $C \in \Terms(\Variables)$;
-  \item For $C \in \Constructors$ with $n := \arity(C) > 0$ and $t_1, \dots, t_n \in \Terms(\Variables)$
-        we have $C(t_1, \dots, t_n) \in \Terms(\Variables)$.
+  \item $V \subset \Terms(V)$;
+  \item For a constant $C \in \Constructors$ we have $C \in \Terms(V)$;
+  \item For $C \in \Constructors$ with $n := \arity(C) > 0$ and $t_1, \dots, t_n \in \Terms(V)$
+        we have $C(t_1, \dots, t_n) \in \Terms(V)$.
 \end{itemize}
 \end{definition}
 
-Note that the set of terms depends on the signature. We understand terms as rooted trees
+We understand terms as rooted trees
 rather than strings. The leaves are variables and constants, and inner nodes are constructors
 with as many children as is their arity, with the child edges being ordered.
 
@@ -68,7 +71,7 @@ is $\rrsname{Succ}(\rrsname{Succ}(x))$.
 \end{example}
 
 \begin{definition}[Substitution]
-Let a signature and a $\Variables$ set be given. A map $\sigma \colon \Variables \to \Terms$ is
+Let a signature be given. A map $\sigma \colon \Variables \to \Terms$ is
 called \emph{a substitution.} We naturally extend $\sigma$ to a map $\Terms(\Variables) \to \Terms$
 as follows:
 \begin{itemize}
@@ -85,7 +88,7 @@ Now that we have the definition of terms and related concepts, the definition
 of a root rewrite system is rather straightforward.
 
 \begin{definition}[Rewrite rule]
-Let a signature and a $\Variables$ set be given. A \emph{rewrite rule} is a tuple
+Let a signature be given. A \emph{rewrite rule} is a tuple
 $(\tleft, \tright) \in \Terms(\Variables)^2$ such that:
 \begin{itemize}
   \item every variable in $\tleft$ occurs at most once;
@@ -98,9 +101,8 @@ such that $\sigma(\tleft) = t$. In that case, $\sigma(\tright)$ is called
 \end{definition}
 
 \begin{definition}[Root Rewrite System]
-A \emph{Root Rewrite System} is a tuple $\rrsname{RRS} = (\Sig, \Variables, \rrsname{Rules})$
-where $\Sig$ is a signature, $\Variables$ is a set of variables, and $\rrsname{Rules}$ is an ordered
-list of rules.
+A \emph{Root Rewrite System} is a tuple $\rrsname{RRS} = (\Sig, \rrsname{Rules})$
+where $\Sig$ is a signature and $\rrsname{Rules}$ is an ordered list of rules.
 
 Given an input term $t_0 \in \Terms(\Variables)$, in one \emph{step} the machine
 rewrites $t_i \to t_{i+1}$ using the first matching rule. The sequence
