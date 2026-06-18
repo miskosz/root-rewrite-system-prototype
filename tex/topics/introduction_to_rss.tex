@@ -1,4 +1,3 @@
-% Build: `make` (from tex/) → build/definitions.pdf
 \documentclass[11pt]{article}
 \usepackage{rrs}
 
@@ -53,19 +52,19 @@ all ground terms is denoted simply $\Terms$.
 \begin{example}[Natural numbers]
 Let us construct terms representing natural numbers. We define the signature by:
 \begin{align*}
-  \Constructors &= \{\mathrm{Zero}, \mathrm{Succ}\} \\
+  \Constructors &= \{\rrsname{Zero}, \rrsname{Succ}\} \\
   \arity \colon \Constructors &\to \N \\
-  \mathrm{Zero} &\mapsto 0 \\
-  \mathrm{Succ} &\mapsto 1
+  \rrsname{Zero} &\mapsto 0 \\
+  \rrsname{Succ} &\mapsto 1
 \end{align*}
 Example terms representing 0, 1, 2 are:
 \begin{itemize}
-  \item $\mathrm{Zero}$
-  \item $\mathrm{Succ}(\mathrm{Zero})$
-  \item $\mathrm{Succ}(\mathrm{Succ}(\mathrm{Zero}))$
+  \item $\rrsname{Zero}$
+  \item $\rrsname{Succ}(\rrsname{Zero})$
+  \item $\rrsname{Succ}(\rrsname{Succ}(\rrsname{Zero}))$
 \end{itemize}
 These are ground, and all are elements of $\Terms$. An example element of $\Terms(\{x\})$
-is $\mathrm{Succ}(\mathrm{Succ}(x))$.
+is $\rrsname{Succ}(\rrsname{Succ}(x))$.
 \end{example}
 
 \begin{definition}[Substitution]
@@ -99,8 +98,8 @@ such that $\sigma(\tleft) = t$. In that case, $\sigma(\tright)$ is called
 \end{definition}
 
 \begin{definition}[Root Rewrite System]
-A \emph{Root Rewrite System} is a tuple $\mathrm{RRS} = (\Sig, \Variables, \mathrm{Rules})$
-where $\Sig$ is a signature, $\Variables$ is a set of variables, and $\mathrm{Rules}$ is an ordered
+A \emph{Root Rewrite System} is a tuple $\rrsname{RRS} = (\Sig, \Variables, \rrsname{Rules})$
+where $\Sig$ is a signature, $\Variables$ is a set of variables, and $\rrsname{Rules}$ is an ordered
 list of rules.
 
 Given an input term $t_0 \in \Terms(\Variables)$, in one \emph{step} the machine

@@ -74,15 +74,18 @@
 % --- Notation macros --------------------------------------------------------
 \newcommand{\N}{\mathbb{N}}
 \newcommand{\powerset}{\mathcal{P}}
-\newcommand{\Sig}{\mathrm{Sig}}
-\newcommand{\Types}{\mathrm{Types}}
-\newcommand{\Constructors}{\mathrm{Constructors}}
-\newcommand{\arity}{\mathrm{arity}}
-\newcommand{\childTypes}{\mathrm{childTypes}}
-\newcommand{\Terms}{\mathrm{Terms}}
-\newcommand{\TermsVar}{\mathrm{TermsVar}}
-\newcommand{\Variables}{\mathrm{Variables}}
-\newcommand{\Var}{\mathrm{Var}}
+% Named objects (multi-letter names) are set in sans-serif to distinguish them
+% from italic variables and upright operator names.
+\newcommand{\rrsname}[1]{\mathsf{#1}}
+\newcommand{\Sig}{\rrsname{Sig}}
+\newcommand{\Types}{\rrsname{Types}}
+\newcommand{\Constructors}{\rrsname{Constructors}}
+\newcommand{\arity}{\rrsname{arity}}
+\newcommand{\childTypes}{\rrsname{childTypes}}
+\newcommand{\Terms}{\rrsname{Terms}}
+\newcommand{\TermsVar}{\rrsname{TermsVar}}
+\newcommand{\Variables}{\rrsname{Variables}}
+\newcommand{\Var}{\rrsname{Var}}
 \newcommand{\subst}{\sigma}            % a substitution
 \newcommand{\tleft}{t_{\mathrm{left}}}
 \newcommand{\tright}{t_{\mathrm{right}}}
