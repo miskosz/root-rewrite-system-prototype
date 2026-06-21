@@ -9,8 +9,8 @@
 \maketitle
 
 Root Rewrite System (RRS) is a computation model operating on \emph{terms}. The
-definitions below use ideas from term rewriting systems (TRS) and functional
-language features in e.g.\ ML / Haskell / Rust.
+definitions below use ideas from term rewriting systems and functional
+language features in e.g. ML, Haskell or Rust.
 
 \section{Signatures and Terms}
 
@@ -31,10 +31,10 @@ Constructors of arity zero are called \emph{constants}, of arity one
 \end{definition}
 
 \begin{definition}[Terms]
-Let $(\Constructors, \arity)$ be a given signature. For $V \subset \Variables$ define $\Terms(V)$, the set of
+Let $(\Constructors, \arity)$ be a given signature. For $V \subseteq \Variables$ define $\Terms(V)$, the set of
 \emph{terms with variables in $V$,} as the smallest set such that:
 \begin{itemize}
-  \item $V \subset \Terms(V)$;
+  \item $V \subseteq \Terms(V)$;
   \item For a constant $C \in \Constructors$ we have $C \in \Terms(V)$;
   \item For $C \in \Constructors$ with $n := \arity(C) > 0$ and $t_1, \dots, t_n \in \Terms(V)$
         we have $C(t_1, \dots, t_n) \in \Terms(V)$.
@@ -47,7 +47,7 @@ with as many children as is their arity.
 
 \begin{definition}[Term variables]
 Let a signature be given and $t \in \Terms(\Variables)$. Define $\Var(t)$, the
-\emph{variables occurring in $t$}, as the smallest $V \subset \Variables$ such that
+\emph{variables occurring in $t$}, as the smallest $V \subseteq \Variables$ such that
 $t \in \Terms(V)$. If $V$ is the empty set we call $t$ \emph{ground}.
 
 The set of
@@ -55,7 +55,7 @@ all ground terms is denoted simply $\Terms$, and the set of all terms with
 variables, $\Terms(\Variables)$, is denoted $\TermsVar$.
 \end{definition}
 
-\begin{example}[Natural numbers]
+\begin{example}[Natural numbers]\label{ex:natural-numbers}
 Let us construct terms representing natural numbers. We define the signature by:
 \begin{align*}
   \Constructors &= \{\rrsname{Zero}, \rrsname{Succ}\} \\
@@ -99,23 +99,67 @@ $(\tleft, \tright) \in \TermsVar^2$ such that:
   \item every variable in $\tright$ occurs in $\tleft$.
 \end{itemize}
 A rewrite rule \emph{matches} a term $t \in \Terms$ if there exists a substitution $\sigma$
-such that $\hat{\sigma}(\tleft) = t$. In that case, $\hat{\sigma}(\tright)$ is called
-\emph{$t$ rewritten by the rule}.
+such that $\hat{\sigma}(\tleft) = t$. In that case, $\hat{\sigma}(\tright)$ does not depend
+on the choice of $\sigma$ and we call it \emph{$t$ rewritten by the rule}.
 \end{definition}
+
+Note that the rules do not allow for duplication of variables. Subterms bound by variables can
+only be moved around or discarded.
 
 \begin{definition}[Root Rewrite System]
 A \emph{Root Rewrite System} is a tuple $\rrsname{RRS} = (\Sig, \rrsname{Rules})$
 where $\Sig$ is a signature and $\rrsname{Rules}$ is an ordered list of rules.
 
-Given an input term $t_0 \in \Terms$, in one \emph{step} the machine
-rewrites $t_i \to t_{i+1}$ using the first matching rule. The sequence
-terminates at $t_n$ if no rule matches; $t_n$ is then the \emph{normal form} of
-$t_0$ and it is the output of the machine.
+Given an input term $t_0 \in \Terms$, in one \emph{step} the machine rewrites
+$t_i \to t_{i+1}$ using the first matching rule. The sequence
+terminates at $t_n$ if no rule matches; then $t_n$ is the output of the machine.
+If the sequence does not terminate the machine does not produce an output.
 \end{definition}
 
 \begin{note}
-In TRS terminology this is a \emph{priority root-rewrite system}: rules apply
+In term rewriting terminology this is a \emph{priority root-rewrite system}: rules apply
 only at the root, and the first matching rule wins. Moreover, the rules are \emph{linear.}
+Note that $t_n$ defined above is the \emph{normal form} of $t_0$.
 \end{note}
+
+We define a simple programming language to give examples of RSSes. A program is of the form:
+
+\begin{rrscode}
+rule <lhs1> -> <rhs1>
+rule <lhs2> -> <rhs2>
+...
+\end{rrscode}
+
+Every line defines a rewrite rule, ordered from top to bottom. The signature is implicitly
+defined as the set of all constructors occurring in the rules, with arity given by their
+usage (which must be consistent). To distinguish constructors from variables, we require that
+constructors start with an uppercase letter and variables with a lowercase one.
+
+\begin{example}[Addition of natural numbers]
+With the natural number definition from Example \ref{ex:natural-numbers}, let us add an
+$\rrsname{Add}$ constructor with arity two:
+
+\begin{rrscode}
+rule Add(Succ(x), y) -> Add(x, Succ(y))
+rule Add(Zero, y) -> y
+\end{rrscode}
+
+The idea is to move all $\rrsname{Succ}$ constructors from the first child to the second
+one-by-one. I.e., $\rrsname{Add}(x+1, y)$ rewrites to $\rrsname{Add}(x, y+1)$. A computation
+of 2+1 would look like this:
+\begin{align*}
+  &\rrsname{Add}(\rrsname{Succ}(\rrsname{Succ}(\rrsname{Zero})), \rrsname{Succ}(\rrsname{Zero})) \\
+  {}\to{} &\rrsname{Add}(\rrsname{Succ}(\rrsname{Zero}), \rrsname{Succ}(\rrsname{Succ}(\rrsname{Zero}))) \\
+  {}\to{} &\rrsname{Add}(\rrsname{Zero}, \rrsname{Succ}(\rrsname{Succ}(\rrsname{Succ}(\rrsname{Zero})))) \\
+  {}\to{} &\rrsname{Succ}(\rrsname{Succ}(\rrsname{Succ}(\rrsname{Zero})))
+\end{align*}
+which is the term representing 3, as expected.
+
+\end{example}
+
+\begin{example}[Reverse a list]
+TODO
+\end{example}
+
 
 \end{document}

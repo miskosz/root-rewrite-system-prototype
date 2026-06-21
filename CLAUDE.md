@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Tutorial site + interpreter for **Root Rewrite Systems (RRS)** — a computation model that rewrites typed trees by matching patterns at the root and applying the first matching rule. The formal definition lives in `rrs_definition.md`; sample programs live in `programs/`. The site is built with Astro + MDX and deployed to GitHub Pages at https://miskosz.github.io/root-rewrite-system-prototype/.
+Tutorial site + interpreter for **Root Rewrite Systems (RRS)** — a computation model that rewrites trees by matching patterns at the root and applying the first matching rule. The outdated formal definition lives in `rrs_definition.md`; sample programs live in `programs/`, and WIP formal fondations are in `tex/topics/introduction_to_rss.tex`. The site is built with Astro + MDX and deployed to GitHub Pages at https://miskosz.github.io/root-rewrite-system-prototype/.
 
 Currently RRS3 is the only supported surface language. RRS1/RRS2 have been removed (their sample programs are kept in `programs/` for reference only).
 
