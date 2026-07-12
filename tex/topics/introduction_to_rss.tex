@@ -8,7 +8,7 @@
 \begin{document}
 \maketitle
 
-Root Rewrite System (RRS) is a computation model operating on \emph{terms}. The
+Root Rewrite System (RRS) is a model of computation operating on \emph{terms}. The
 definitions below use ideas from term rewriting systems and functional
 language features in e.g. ML, Haskell or Rust.
 
@@ -146,7 +146,7 @@ rule Add(Zero, y) -> y
 
 The idea is to move all $\rrsname{Succ}$ constructors from the first child to the second
 one-by-one. I.e., $\rrsname{Add}(x+1, y)$ rewrites to $\rrsname{Add}(x, y+1)$. A computation
-of 2+1 would look like this:
+of 2+1 looks like this:
 \begin{align*}
   &\rrsname{Add}(\rrsname{Succ}(\rrsname{Succ}(\rrsname{Zero})), \rrsname{Succ}(\rrsname{Zero})) \\
   {}\to{} &\rrsname{Add}(\rrsname{Succ}(\rrsname{Zero}), \rrsname{Succ}(\rrsname{Succ}(\rrsname{Zero}))) \\
@@ -157,9 +157,50 @@ which is the term representing 3, as expected.
 
 \end{example}
 
-\begin{example}[Reverse a list]
-TODO
+\begin{example}[Lists]
+As customary in functional languages, we represent lists with two constructors, $\rrsname{Nil}$
+of arity 0 and $\rrsname{L}$ of arity 2. $\rrsname{Nil}$ represents an empty list, and
+$\rrsname{L}(head, tail)$ a list with $head$ as the first element and $tail$ as the rest
+of the list.
+
+For example, if $\rrsname{True}$ and $\rrsname{False}$ are constants, this is a valid three-element
+list:
+\begin{align*}
+\rrsname{L}(\rrsname{True}, \rrsname{L}(\rrsname{False}, \rrsname{L}(\rrsname{False}, \rrsname{Nil})))
+\end{align*}
+
+Because lists are very useful we introduce a right-associative $head :: tail$
+shorthand notation for $\rrsname{L}(head, tail)$. The same list can be written as:
+\begin{align*}
+\rrsname{True} :: \rrsname{False} :: \rrsname{False} :: \rrsname{Nil}
+\end{align*}
 \end{example}
 
+\begin{example}[Reversing a list]
+Let lists be as in the previous example. We can define a reverse function with
+the following rules:
+\begin{rrscode}
+rule Reverse(list) -> ReverseImpl(list, Nil)
+rule ReverseImpl(head :: tail, revlist)
+    -> ReverseImpl(tail, head :: revlist)
+rule ReverseImpl(Nil, revlist) -> revlist
+\end{rrscode}
+We introduced an auxiliary constructor $\rrsname{ReverseImpl}$ to reverse the input
+into an accumulator element by element.
+\end{example}
+
+The examples above show some properties of using RRS as a programming language:
+\begin{itemize}
+\item We use some constructors to represent functions and some to represent data. In the
+examples above the root represents a function and the rest is data, however the
+distinction between functions and data is not always clear.
+\item For lists, it is often useful to restrict $head$ to always be of the same "type".
+We will later on introduce types formally for a much broader range of usecases.
+\item The $\rrsname{Reverse}$ example works for lists of any element type.
+\item Introducing auxiliary functions is a common programming technique in RRS.
+\end{itemize}
+
+We will return later to using RRS as a programming language. First though we will explore
+theoretical properties of this model of computation.
 
 \end{document}
