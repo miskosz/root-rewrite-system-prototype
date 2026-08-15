@@ -158,9 +158,10 @@ which is the term representing 3, as expected.
 \end{example}
 
 \begin{example}[Lists]
-As customary in functional languages, we represent lists with two constructors, $\rrsname{Nil}$
-of arity 0 and $\rrsname{L}$ of arity 2. $\rrsname{Nil}$ represents an empty list, and
-$\rrsname{L}(head, tail)$ a list with $head$ as the first element and $tail$ as the rest
+As customary in functional languages\footnote{The arity-two constructor is usually named
+$\rrsname{Cons}$. We name it $\rrsname{L}$ for brevity.}, we represent lists with two constructors,
+$\rrsname{Nil}$ of arity 0 and $\rrsname{L}$ of arity 2. $\rrsname{Nil}$ represents an empty list,
+and $\rrsname{L}(head, tail)$ a list with $head$ as the first element and $tail$ as the rest
 of the list.
 
 For example, if $\rrsname{True}$ and $\rrsname{False}$ are constants, this is a valid three-element
@@ -200,7 +201,18 @@ We will later on introduce types formally for a much broader range of usecases.
 \item Introducing auxiliary functions is a common programming technique in RRS.
 \end{itemize}
 
-We will return later to using RRS as a programming language. First though we will explore
-theoretical properties of this model of computation.
+We will return later to using RRS as a programming language. First we will explore
+some theoretical properties of this model of computation.
+
+\begin{exercise}
+Define a function $\rrsname{ListLength}$ that computes the length of a list.
+The output should be a natural number as defined in Example \ref{ex:natural-numbers}.
+\end{exercise}
+
+\begin{exercise}
+Define a function $\rrsname{IsPalindrome}$ that checks if a list is a palindrome.
+You can assume a finite set of constants to represent the elements of the list, e.g.,
+$\rrsname{True}$ and $\rrsname{False}$. The output should be a boolean.
+\end{exercise}
 
 \end{document}
