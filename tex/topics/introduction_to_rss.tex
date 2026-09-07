@@ -350,6 +350,30 @@ models of computation. In particular:
 RRS is Turing-complete.
 \end{corollary}
 
+
+\subsection{Relation to pointer machines}
+
+We include a brief informal note on pointer machines.
+
+Pointer machines are models of computation that operate on a graph of nodes.
+The control unit of the machine can traverse the graph and modify it. It observes
+a finite neighbourhood of the current node, and can only modify the graph in that
+neighbourhood. Two prominent examples are Kolmogorov-Uspensky machine and Schönhage's
+storage modification machine. They both operate on regular graphs.
+
+These models can simulate RRS with at most a constant factor time and space overhead
+-- terms can be represented as trees, and the rewriting rules are local.
+
+In the other direction, RRS can simulate pointer machines with a logarithmic-factor
+time and space overhead. This can be achieved by assigning binary identifiers to the
+nodes of the graph and maintaining a lookup table of the graph edges.
+
+We conjecture that there is a gap between the models, i.e. that there exists a problem
+that can be solved asymptotically faster on pointer machines than on RRS. This seems
+plausible because graphs of pointer machines can contain cycles which can
+decrease the diameter of the graph and allow for faster traversal. We leave
+this question open.
+
 \begin{thebibliography}{9}
 
 \bibitem{sipser2013}
