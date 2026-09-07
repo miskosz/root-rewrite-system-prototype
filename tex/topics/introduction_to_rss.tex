@@ -231,8 +231,9 @@ The choice will matter later on when we look at complexity classes. For now, we 
 the simple case of a single-tape decision Turing machine. Other flavours can be
 simulated analogously.
 
-\begin{definition}[Turing machine, Sipser's definition] A deterministic single-tape decision
-\emph{Turing machine} is a 7-tuple $(Q, \Sigma, \Gamma, \delta, q_0, q_{accept}, q_{reject})$
+\begin{definition}[Turing machine, Sipser's definition \cite{sipser2013}] A deterministic
+single-tape decision \emph{Turing machine} is a 7-tuple
+$(Q, \Sigma, \Gamma, \delta, q_0, q_{accept}, q_{reject})$
 where:
 \begin{itemize}
   \item $Q$ is a finite, non-empty set of \emph{states};
@@ -245,7 +246,11 @@ where:
   \item $q_0, q_{accept}, q_{reject} \in Q$ are the \emph{start state},
   \emph{accept state} and \emph{reject state} respectively, where $q_{reject} \neq q_{accept}$.
 \end{itemize}
-We omit the formal definition of the machine's configuration and how it operates.
+The machine operates on a one-way infinite tape, with the input word $w \in \Sigma^*$
+written on the tape starting at the leftmost cell, and the rest of the tape filled with
+blanks.
+
+We omit a detailed description of the machine's configuration and how it operates.
 We assume the reader is familiar with Turing machine operation.
 \end{definition}
 
@@ -297,11 +302,11 @@ $s_1 s_2 \cdots s_n \in \Sigma^+$ define:
   \tau(s_1 s_2 \cdots s_n) := q_0 (\rrsname{Nil}, s_1 :: s_2 :: \dots :: s_n :: \rrsname{Nil})
 \end{align*}
 
-Finally, for $(q, s) \in Q \times \Gamma$ define rules:
+Finally, for $(q, s) \in Q \times \Gamma$ such that $q \notin \{q_{accept}, q_{reject}\}$ define rules:
 \begin{itemize}
   \item If $\delta(q, s) = (q', s', L)$:
   \begin{itemize}
-    \item $q(\rrsname{Nil}, s :: rtail) \to q'(\rrsname{Nil}, \sqcup :: s' :: rtail)$
+    \item $q(\rrsname{Nil}, s :: rtail) \to q'(\rrsname{Nil}, s' :: rtail)$
     \item $q(t :: ltail, s :: rtail) \to q'(ltail, t :: s' :: rtail)$
   \end{itemize}
   \item If $\delta(q, s) = (q', s', R)$:
@@ -344,5 +349,21 @@ models of computation. In particular:
 \begin{corollary}
 RRS is Turing-complete.
 \end{corollary}
+
+\begin{thebibliography}{9}
+
+\bibitem{sipser2013}
+Michael Sipser.
+\emph{Introduction to the Theory of Computation}.
+3rd edition, Cengage Learning, Boston, MA, 2013.
+ISBN 978-1-133-18779-0.
+
+\bibitem{arorabarak2009}
+Sanjeev Arora and Boaz Barak.
+\emph{Computational Complexity: A Modern Approach}.
+Cambridge University Press, Cambridge, 2009.
+ISBN 978-0-521-42426-4.
+
+\end{thebibliography}
 
 \end{document}
