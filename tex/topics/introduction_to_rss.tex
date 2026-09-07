@@ -107,8 +107,8 @@ Note that the rules do not allow for duplication of variables. Subterms bound by
 only be moved around or discarded.
 
 \begin{definition}[Root Rewrite System]
-A \emph{Root Rewrite System} is a tuple $\rrsname{RRS} = (\Sig, \rrsname{Rules})$
-where $\Sig$ is a signature and $\rrsname{Rules}$ is an ordered list of rules.
+A \emph{Root Rewrite System} is a tuple $\rrsname{RRS} = (\Sig, \Rules)$
+where $\Sig$ is a signature and $\Rules$ is an ordered list of rules.
 
 Given an input term $t_0 \in \Terms$, in one \emph{step} the machine rewrites
 $t_i \to t_{i+1}$ using the first matching rule. The sequence
@@ -214,5 +214,135 @@ Define a function $\rrsname{IsPalindrome}$ that checks if a list is a palindrome
 You can assume a finite set of constants to represent the elements of the list, e.g.,
 $\rrsname{True}$ and $\rrsname{False}$. The output should be a boolean.
 \end{exercise}
+
+\section{Properties of Root Rewrite Systems}
+
+In this section we compare RRS to other models of computation and discuss some of its
+properties. We start by showing that an RRS can simulate a Turing machine with
+precisely the same number of steps. This shows that RRS is Turing-complete.
+
+\subsection{Turing-completeness}
+
+The first technical obstacle to navigate is which Turing machine flavour to choose
+for our analysis. They differ in the output mode -- they can accept or reject, or they
+can produce an output. We can also choose the number of tapes.
+
+The choice will matter later on when we look at complexity classes. For now, we choose
+the simple case of a single-tape decision Turing machine. Other flavours can be
+simulated analogously.
+
+\begin{definition}[Turing machine, Sipser's definition] A deterministic single-tape decision
+\emph{Turing machine} is a 7-tuple $(Q, \Sigma, \Gamma, \delta, q_0, q_{accept}, q_{reject})$
+where:
+\begin{itemize}
+  \item $Q$ is a finite, non-empty set of \emph{states};
+  \item $\Sigma$ is a finite set of \emph{input symbols}, not containing the blank symbol
+  $\sqcup$;
+  \item $\Gamma$ is a finite set of \emph{tape symbols}, where $\Sigma \subseteq \Gamma$
+  and $\sqcup \in \Gamma$;
+  \item $\delta \colon Q \times \Gamma \to Q \times \Gamma \times \{L, R\}$ is the
+  \emph{transition function};
+  \item $q_0, q_{accept}, q_{reject} \in Q$ are the \emph{start state},
+  \emph{accept state} and \emph{reject state} respectively, where $q_{reject} \neq q_{accept}$.
+\end{itemize}
+We omit the formal definition of the machine's configuration and how it operates.
+We assume the reader is familiar with Turing machine operation.
+\end{definition}
+
+\begin{definition}[Number of steps]
+Let $M_{TM}$ be a Turing machine and $w \in \Sigma^*$ an input word. Let
+$\Steps_{TM}(M_{TM}, w)$ denote the number of steps $M_{TM}$ takes on input $w$
+until it halts, or $\infty$ if it does not halt.
+
+Similarly, for $M_{RRS}$ an RRS and $T \in \Terms$ a compatible input term we define
+$\Steps_{RRS}(M_{RRS}, T)$ as the number of steps $M_{RRS}$ takes on input $T$ until
+it halts, or $\infty$ if it does not halt.
+
+If the model of computation is clear from context, we write simply
+$\Steps(M, input)$ for brevity.
+\end{definition}
+
+\begin{theorem}[RRS simulates TM with the same number of steps]
+For every Turing machine $M$ there exists an RRS $\hat M = (\Sig, \Rules)$
+with $C_{accept}, C_{reject} \in \Sig$ and an encoding $\tau \colon \Sigma^* \to \Terms$
+such that:
+\begin{itemize}
+  \item $\Steps(M, w) = \Steps(\hat M, \tau(w))$ for all $w \in \Sigma^*$;
+  \item $M$ halts in an accept state on input $w$ if and only if $\hat M$ halts
+  in a term with $C_{accept}$ as the root constructor on input $\tau(w)$.
+  Analogously for the reject state.
+\end{itemize}
+\end{theorem}
+
+The proof idea is to encode the Turing machine's configuration as a term, where the
+root constructor represents the current state, and has two children: the list of tape
+symbols to the left of the head, and the list of tape symbols to the right of it. The
+left list is reversed so that the symbol closest to the head is at the top.
+
+\begin{proof}
+Let $M = (Q, \Sigma, \Gamma, \delta, q_0, q_{accept}, q_{reject})$. WLOG assume that
+$Q$, $\Gamma$ and the set of list constructors $\{\rrsname{L}, \rrsname{Nil}\}$
+are disjoint.
+
+Define the signature $\Sig = (\Constructors, \arity)$ of $\hat M$ such that:
+\begin{itemize}
+  \item $\Constructors = Q \cup \Gamma \cup \{\rrsname{L}, \rrsname{Nil}\}$;
+  \item $\arity(q) = \arity(\rrsname{L}) = 2$ for $q \in Q$ and
+  $\arity(s) = \arity(\rrsname{Nil}) = 0$ for $s \in \Gamma$.
+\end{itemize}
+
+Define $\tau(\varepsilon) := q_0 (\rrsname{Nil}, \sqcup :: \rrsname{Nil})$ and for
+$s_1 s_2 \cdots s_n \in \Sigma^+$ define:
+\begin{align*}
+  \tau(s_1 s_2 \cdots s_n) := q_0 (\rrsname{Nil}, s_1 :: s_2 :: \dots :: s_n :: \rrsname{Nil})
+\end{align*}
+
+Finally, for $(q, s) \in Q \times \Gamma$ define rules:
+\begin{itemize}
+  \item If $\delta(q, s) = (q', s', L)$:
+  \begin{itemize}
+    \item $q(\rrsname{Nil}, s :: rtail) \to q'(\rrsname{Nil}, \sqcup :: s' :: rtail)$
+    \item $q(t :: ltail, s :: rtail) \to q'(ltail, t :: s' :: rtail)$
+  \end{itemize}
+  \item If $\delta(q, s) = (q', s', R)$:
+  \begin{itemize}
+    \item $q(l, s :: \rrsname{Nil}) \to q'(s' :: l, \sqcup :: \rrsname{Nil})$
+    \item $q(l, s :: rtail) \to q'(s' :: l, rtail)$
+  \end{itemize}
+\end{itemize}
+
+This construction simulates the Turing machine step-by-step, as we invite the reader
+to verify. A formal proof would need a formal definition of the Turing machine's
+configuration and operation, which we omit here for brevity.
+
+The proof is finished by setting $C_{accept} := q_{accept}$ and $C_{reject} := q_{reject}$.
+\end{proof}
+
+[TODO: A nice image of the construction here.]
+
+It is not difficult to convince oneself that a Turing machine can simulate an RRS with
+at most a polynomial factor overhead. In every RRS step, the term size in the number
+of nodes can grow at most by a constant. For a simulation by a Turing machine, we can
+encode the term as a string with parentheses and commas. With this representation,
+rule matching and rewriting can be done in linear time in the size of the term.
+We present the proof in Appendix \ref{appendix:tm-simulates-rrs} for completeness.
+
+\begin{lemma}[TM simulates RRS with polynomial overhead]
+For every RRS $R$ there exists a multi-tape Turing machine with an input-output tape
+$\hat R$ and an encoding $\tau \colon \Terms \to \Sigma^*$ such that:
+\begin{itemize}
+  \item $\Steps(\hat R, \tau(T)) = O(S|T| + S^2)$ for all $T \in \Terms$, where $S = \Steps(R, T)$;
+  \item If $R$ produces an output $T'$ on input $T$, then $\hat R$ halts on input $\tau(T)$
+  and produces $\tau(T')$ on the input-output tape. Otherwise, $\hat R$ does not halt on input $\tau(T)$.
+\end{itemize}
+\end{lemma}
+
+Since a single-tape Turing machine can simulate a multi-tape Turing machine with at most
+a quadratic overhead, we can conclude that RRS and Turing machines are polynomially equivalent
+models of computation. In particular:
+
+\begin{corollary}
+RRS is Turing-complete.
+\end{corollary}
 
 \end{document}
