@@ -412,32 +412,32 @@ and sums (i.e. disjoint unions) of existing types.
 Formally we define type as a special subset of terms.
 
 \begin{definition}[Algebraic data types]
-Let a signature be given. A \emph{type declaration} is a finite set $\Theta$ of type names,
-each $\theta \in \Theta$ with exactly one definition of the form
+Let a signature be given. A \emph{type declaration} is a finite set $\mathcal{T}$ of type names,
+each $T \in \mathcal{T}$ with exactly one definition of the form
 \[
   \begin{array}{@{\qquad}l@{}}
-    \multicolumn{1}{@{}l@{}}{\theta := \{} \\
-    C_1(\theta_{1,1}, \dots, \theta_{1,n_1}), \\
+    \multicolumn{1}{@{}l@{}}{T := \{} \\
+    C_1(T_{1,1}, \dots, T_{1,n_1}), \\
     \multicolumn{1}{@{\qquad}c@{}}{\vdots} \\
-    C_k(\theta_{k,1}, \dots, \theta_{k,n_k}), \\
+    C_k(T_{k,1}, \dots, T_{k,n_k}), \\
     \multicolumn{1}{@{}l@{}}{\}}
   \end{array}
 \]
-where $k \ge 0$, $C_j \in \Constructors$ with $\arity(C_j) = n_j$, $\theta_{j,i} \in \Theta$,
+where $k \ge 0$, $C_j \in \Constructors$ with $\arity(C_j) = n_j$, $T_{j,i} \in \mathcal{T}$,
 and every constructor occurs exactly once in the whole declaration.
-The \emph{type} $\llbracket\theta\rrbracket \subseteq \Terms$ is given by the unique
+The \emph{type} $\llbracket T\rrbracket \subseteq \Terms$ is given by the unique
 solution to the system of equations
 \[
-  \llbracket\theta\rrbracket = \bigsqcup_{j=1}^{k}
-    \{C_j(t_1, \dots, t_{n_j}) \mid t_i \in \llbracket\theta_{j,i}\rrbracket\}
-    \qquad \text{for } \theta \in \Theta.
+  \llbracket T\rrbracket = \bigsqcup_{j=1}^{k}
+    \{C_j(t_1, \dots, t_{n_j}) \mid t_i \in \llbracket T_{j,i}\rrbracket\}
+    \qquad \text{for } T \in \mathcal{T}.
 \]
 \end{definition}
 
 \begin{note}
 The solution exists and is unique because every constructor occurs exactly once on the
 right-hand side of the equation. I.e., a term with a root constructor $C$ has a unique
-candidate type $\theta$ where it can belong. Thus the membership in a type can be
+candidate type $T$ where it can belong. Thus the membership in a type can be
 decided by a simple recursive algorithm.
 \end{note}
 
@@ -446,9 +446,9 @@ In our programming language, we use the \lstinline|type| keyword to define both
 
 \begin{rrscode}
 type T {
-  C1(T1, ..., Tn),
+  C1(T1_1, ..., T1_n1),
   ...
-  Ck(T1, ..., Tn),
+  Ck(Tk_1, ..., Tk_nk),
 }
 \end{rrscode}
 
@@ -463,7 +463,7 @@ syntax:
 
 We allow whitespace around parentheses and braces, and we
 also allow optional trailing commas in the list of child types. For product types,
-we allow optional names for the children,: \lstinline|C(x1: T1, ..., xn: Tn)|.
+we allow optional names for the children: \lstinline|C(x1: T1, ..., xn: Tn)|.
 
 \begin{thebibliography}{9}
 
