@@ -386,103 +386,84 @@ In order to do that we first develop RRS as a programming language.
 
 \subsection{Algebraic data types}
 
-We define type as a special subset of terms.
+We introduce types to the RRS programming language. They let us better express the
+intent, and will double as a definition of the signature.
+Below we introduce the following syntax:
 
-\begin{definition}[Algebraic data type]
-Let a signature be given. A set $T \subseteq \Terms$ is a \emph{type} if either:
-\begin{itemize}
-  \item $T = \emptyset$;
-  \item $T = \{C\}$ for a constant $C \in \Constructors$;
-  \item $T = \{C(t_1, \dots, t_n) \mid t_i \in T_i\}$ for a constructor
-  $C \in \Constructors$ with $n := \arity(C) > 0$ and types $T_1, \dots, T_n$.
-  \item $T = T_1 \cup \dots \cup T_n$ for types $T_1, \dots, T_n$.
-\end{itemize}
+\begin{rrscode}
+type Nat {
+  Zero,
+  Succ(Nat),
+}
+
+type List<'a> {
+  Nil,
+  L(head: 'a, tail: List<'a>),
+}
+
+type Add(Nat, Nat)
+type Reverse(List<'a>)
+\end{rrscode}
+
+We draw inspiration from algebraic data types in functional programming languages.
+New types can be constructed from existing ones in two ways: by taking products
+and sums (i.e. disjoint unions) of existing types.
+
+Formally we define type as a special subset of terms.
+
+\begin{definition}[Algebraic data types]
+Let a signature be given. A \emph{type declaration} is a finite set $\Theta$ of type names,
+each $\theta \in \Theta$ with exactly one definition of the form
+\[
+  \begin{array}{@{\qquad}l@{}}
+    \multicolumn{1}{@{}l@{}}{\theta := \{} \\
+    C_1(\theta_{1,1}, \dots, \theta_{1,n_1}), \\
+    \multicolumn{1}{@{\qquad}c@{}}{\vdots} \\
+    C_k(\theta_{k,1}, \dots, \theta_{k,n_k}), \\
+    \multicolumn{1}{@{}l@{}}{\}}
+  \end{array}
+\]
+where $k \ge 0$, $C_j \in \Constructors$ with $\arity(C_j) = n_j$, $\theta_{j,i} \in \Theta$,
+and every constructor occurs exactly once in the whole declaration.
+The \emph{type} $\llbracket\theta\rrbracket \subseteq \Terms$ is given by the unique
+solution to the system of equations
+\[
+  \llbracket\theta\rrbracket = \bigsqcup_{j=1}^{k}
+    \{C_j(t_1, \dots, t_{n_j}) \mid t_i \in \llbracket\theta_{j,i}\rrbracket\}
+    \qquad \text{for } \theta \in \Theta.
+\]
 \end{definition}
 
-The name "algebraic data type" comes from the following intuition. The types are
-built inductively from the constant types. The third bullet point corresponds
-to a Cartesian product of types, and the fourth to a sum (i.e. disjoint union) of types.
-
-In our programming language, we use the \lstinline|type| keyword to both define
-\emph{types} and \emph{constructors}:
-
-\begin{itemize}
-  \item \lstinline|type C| defines a constant type $C$ with a single constructor $C$;
-  \item \lstinline|type P(T1, ..., Tn)| defines a type $P$ with a single constructor $P$ of arity $n$ and
-  child types $T_1, \dots, T_n$;
-  \item \lstinline|type S{T1, ..., Tn}| defines a type $S$ as a sum of types $T_1$ through $T_n$.
-\end{itemize}
-
-We allow a whitespace between the type name and the opening parenthesis or brace, and we
-also allow trailing commas in the list of child types. Furthermore:
-
-\begin{itemize}
-  \item For product types, optionally we can use \lstinline|type P(x1: T1, ..., xn: Tn)|
-  to name the children of the constructor;
-  \item For sum types, it would be tedious to define the subtypes beforehand. We allow
-  to define them inline, without the \lstinline|type| keyword.
-\end{itemize}
-
-\begin{example}[Type syntax]
-The following are valid type definitions:
-
-\begin{rrscode}
-type Nat {
-  type Zero,
-  type Succ(Nat),
-}
-
-type Bit {
-  type B0,
-  type B1,
-}
-
-type BitList {
-  type Nil,
-  type L(head: Bit, tail: BitList),
-}
-
-type Byte(Bit, Bit, Bit, Bit, Bit, Bit, Bit, Bit)
-
-type Konst
-\end{rrscode}
-
-\end{example}
-
 \begin{note}
-TODO sum type
+The solution exists and is unique because every constructor occurs exactly once on the
+right-hand side of the equation. I.e., a term with a root constructor $C$ has a unique
+candidate type $\theta$ where it can belong. Thus the membership in a type can be
+decided by a simple recursive algorithm.
+\end{note}
+
+In our programming language, we use the \lstinline|type| keyword to define both
+\emph{types} and \emph{constructors}. The syntax
 
 \begin{rrscode}
-# Tedious
-type Zero
-type Succ(Nat)
-type Nat {
-  Zero,
-  Succ,
-}
-
-# Better
-type Nat {
-  type Zero,
-  type Succ(Nat),
-}
-
-# ??? option 1
-type Succ(Nat)
-type Nat {
-  type Zero,
-  Succ,
-}
-
-# ??? option 2
-type Succ(Nat)
-type Nat {
-  Zero,
-  use Succ,
+type T {
+  C1(T1, ..., Tn),
+  ...
+  Ck(T1, ..., Tn),
 }
 \end{rrscode}
 
-\end{note}
+corresponds exactly to the formal definition above. We also allow two forms of shorthand
+syntax:
+
+\begin{itemize}
+  \item \lstinline|type C(T1, ..., Tn)| is a shorthand for
+  \lstinline|type C { C(T1, ..., Tn) }|;
+  \item \lstinline|type C| is a shorthand for \lstinline|type C { C }|.
+\end{itemize}
+
+We allow whitespace around parentheses and braces, and we
+also allow optional trailing commas in the list of child types. For product types,
+we allow optional names for the children,: \lstinline|C(x1: T1, ..., xn: Tn)|.
 
 \begin{thebibliography}{9}
 
