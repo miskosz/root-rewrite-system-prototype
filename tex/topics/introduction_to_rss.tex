@@ -384,6 +384,17 @@ The goal of this section is to show that there exists a single RRS that can simu
 other RRS. We will show that the simulation is possible with only a constant factor overhead.
 In order to do that we first develop RRS as a programming language.
 
+\subsection{Compiler}
+
+In our setting, the role of the compiler is to translate a text file into the
+mathematical notion of RRS object. It will do so by parsing the file, validating
+the syntax, and construct the signature and the list of rules.
+
+\begin{example}
+The compiler would for example translate the \lstinline|a :: b| expressions into
+$\rrsname{L}(a, b)$ terms.
+\end{example}
+
 \subsection{Algebraic data types}
 
 We introduce types to the RRS programming language. They let us better express the
@@ -396,13 +407,13 @@ type Nat {
   Succ(Nat),
 }
 
-type List<'a> {
+type List<T> {
   Nil,
-  L(head: 'a, tail: List<'a>),
+  L(head: T, tail: List<T>),
 }
 
 type Add(Nat, Nat)
-type Reverse(List<'a>)
+type Reverse(List<T>)
 \end{rrscode}
 
 We draw inspiration from algebraic data types in functional programming languages.
@@ -464,6 +475,134 @@ syntax:
 We allow whitespace around parentheses and braces, and we
 also allow optional trailing commas in the list of child types. For product types,
 we allow optional names for the children: \lstinline|C(x1: T1, ..., xn: Tn)|.
+
+\subsubsection{Type parameters}
+
+We allow type parameters to define generic types using the angle bracket notation.
+We consider it a shorthand notation -- the compiler generates a different type
+for every instantiation of the type parameter.
+
+There is nuance in how this can be done in practice. Since it does not affect
+our exposition, for details we refer the reader to standard textbooks on
+compilers and type theory, e.g. [TODO: Give a reference].
+
+[TODO: exercises]
+
+\subsection{Calling subroutines}
+
+If RRS is to be used practically, we must be able to traverse data structures
+and call subroutines.
+
+We start with two motivating problems. We encourage the
+reader to try to find the solution themself, we consider the discovery process
+to be rewarding.
+
+\begin{exercise}[TreeXor]
+Consider binary trees with bit values in their leaves:
+
+\begin{rrscode}
+type Bit {
+  B0,
+  B1,
+}
+
+type Tree {
+  Leaf(Bit),
+  Branch(Tree, Tree),
+}
+\end{rrscode}
+
+We prefix bit values with \lstinline|B| since our programming language requires type
+identifiers to start with a capital letter.
+
+Your task is to write a program that takes a tree on the input and returns binary
+xor of all leaf values.
+
+\begin{rrscode}
+type TreeXor(Tree)  # returns Bit
+\end{rrscode}
+
+\end{exercise}
+
+\begin{exercise}[BorrowTreeXor]
+
+With the identical setup, write a program that takes a tree on the input, and
+returns binary xor of all leaf values, as well as the original tree unmodified.
+
+\begin{rrscode}
+type Bit {
+  B0,
+  B1,
+}
+
+type Tree {
+  Leaf(Bit),
+  Branch(Tree, Tree),
+}
+
+type Result(Bit, Tree)
+
+type BorrowTreeXor(Tree)  # return Result
+\end{rrscode}
+
+\end{exercise}
+
+
+\subsection{The solution}
+
+We start with the intuition. Because RRS operates only "near the root",
+to read a node deep in the stucture the program has to reorganise the tree
+to bring the node up.
+
+This has to work in an incremental way. If the progam branches at the root
+to process a child $A$, it has to set aside all the children except $A$. Then
+if it branches to process a child $B$ of $A$, a granchild of the root,
+it has to additionally set aside all the children of $A$ except $B$.
+
+This leads to a design where the program stores the "unvisited children" for
+every level of nesting, and the branch it currently processes.
+
+This idea works for simple recursion, which is enough to solve the exercise
+problems. In general, an algorithm might require calling a subroutine with
+two or more children, and sequence several subroutines. Generalising
+the idea leads to a design using a \emph{call stack}.
+
+\subsubsection{Call stack}
+
+Introduce the $\rrsname{Runtime}$ constructor:
+
+\begin{rrscode}
+type Runtime(List<StackType>)
+
+type StackType {
+  # everything that can be on the stack
+}
+\end{rrscode}
+
+We'll show how to translate the following pseudocode into an RRS program:
+
+
+\begin{rrscode}
+function f(x_1, ..., x_k):
+  x_{k+1} = f_1(x_{S_1})
+  x_{k+2} = f_2(x_{S_2})
+  ...
+  x_{k+m} = f_m(x_{S_m})
+  return x_{k+m}
+\end{rrscode}
+
+\noindent where $S_i \subseteq \{1, \dots, k+i-1\}$ are pairwise disjoint and
+$x_S$ stands for the tuple $(x_j)_{j \in S}$ in increasing order of $j$.
+For example, in
+
+\begin{rrscode}
+function f(x_1, x_2, x_3):
+  x_4 = g(x_1, x_3)
+  x_5 = h(x_2, x_4)
+  return x_5
+\end{rrscode}
+
+\noindent we have $S_1 = \{1, 3\}$ and $S_2 = \{2, 4\}$.
 
 \begin{thebibliography}{9}
 
