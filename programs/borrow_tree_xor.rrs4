@@ -1,0 +1,84 @@
+###
+### begin system
+###
+
+type List<'t> {
+    Nil,
+    L(head: 't, tail: List<'t>),
+}
+
+open type StackType
+type Runtime(stack: List<StackType>)
+
+###
+### end system
+###
+
+type Bit {
+  B0,
+  B1,
+}
+
+type Tree {
+  Leaf(Bit),
+  Branch(Tree, Tree),
+}
+
+fn BorrowTreeXor(Tree): (Bit, Tree) match {
+    Leaf(bit) => (bit, Leaf(bit)),
+    Branch(left, right) =>
+        BorrowTreeXor(left) as (xorleft, left);
+        BorrowTreeXor(right) as (xorright, right);
+        Xor(xorleft, xorright) as xor;
+        (xor, Branch(left, right)),
+}
+
+fn Xor(Bit, Bit): Bit match {
+    (B0, B0) => B0,
+    (B0, B1) => B1,
+    (B1, B0) => B1,
+    (B1, B1) => B0,
+}
+
+fn TreeXor(Tree): Bit match {
+    Leaf(bit) => bit,
+    Branch(left, right) =>
+        TreeXor(left) as xorleft;
+        TreeXor(right) as xorright;
+        Xor(xorleft, xorright)
+}
+
+# Expanded
+fn TreeXor(Tree): Bit match {
+    Leaf(bit) => bit,
+    Branch(left, right) => TreeXor(left) match {
+        xorleft => TreeXor(right) match {
+            xorright => Xor(xorleft, xorright)
+        }
+    }
+}
+
+# Omitted braces for single clause (my favourite, both versions work)
+fn TreeXor(Tree): Bit match {
+    Leaf(bit) => bit,
+    Branch(left, right)
+        => TreeXor(left) match xorleft
+        => TreeXor(right) match xorright
+        => Xor(xorleft, xorright),
+}
+
+fn TreeXor(Tree): Bit match {
+    Leaf(bit) => bit,
+    Branch(left, right) => TreeXor(left) match
+        xorleft => TreeXor(right) match
+        xorright => Xor(xorleft, xorright),
+}
+
+# Inverted
+fn TreeXor(Tree): Bit match {
+    Leaf(bit) => bit;
+    Branch(left, right) =>
+        xorleft = TreeXor(left),
+        xorright = TreeXor(right),
+        Xor(xorleft, xorright);
+}

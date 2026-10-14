@@ -31,6 +31,7 @@
 \RequirePackage{amsthm}
 \RequirePackage{mathtools}
 \RequirePackage{stmaryrd}  % \llbracket \rrbracket
+\RequirePackage{bm}        % \bm{x}: bold tuples of variables
 
 % --- Tables, links, colour --------------------------------------------------
 \RequirePackage{booktabs}
@@ -38,8 +39,12 @@
 \RequirePackage[hidelinks]{hyperref}
 
 % --- Code / pseudo-syntax listings ------------------------------------------
-\RequirePackage{algorithm}
-\RequirePackage{algpseudocode}
+\RequirePackage{pseudo}  % \begin{pseudo} ... \end{pseudo} for pseudocode
+% Vertical dots for eliding pseudocode lines. Unlike \vdots (which has 6pt of
+% blank space above the dots), centred just below the maths axis so it fits
+% the line.
+\newcommand{\pvdots}{\lower1.5\p@\hbox{$\vcenter{%
+  \baselineskip4\p@\lineskiplimit\z@\hbox{.}\hbox{.}\hbox{.}}$}}
 \RequirePackage{listings}
 \lstdefinestyle{rrs}{
   basicstyle=\ttfamily\small,

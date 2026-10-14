@@ -497,7 +497,7 @@ We start with two motivating problems. We encourage the
 reader to try to find the solution themself, we consider the discovery process
 to be rewarding.
 
-\begin{exercise}[TreeXor]
+\begin{exercise}[TreeXor]\label{ex:tree-xor}
 Consider binary trees with bit values in their leaves:
 
 \begin{rrscode}
@@ -542,7 +542,7 @@ type Tree {
 
 type Result(Bit, Tree)
 
-type BorrowTreeXor(Tree)  # return Result
+type BorrowTreeXor(Tree)  # returns Result
 \end{rrscode}
 
 \end{exercise}
@@ -569,40 +569,135 @@ the idea leads to a design using a \emph{call stack}.
 
 \subsubsection{Call stack}
 
-Introduce the $\rrsname{Runtime}$ constructor:
+For a tuple $\vec{\bm{x}} = (x_1, \dots, x_n)$ we write $F(\vec{\bm{x}})$
+as a shorthand for $F(x_1, \dots, x_n)$. We'll show how to translate the
+following pseudocode into an RRS program:
+
+\begin{pseudo}
+  \kw{function} $\mathrm{G}(x_1, \dots, x_k)$: \\+
+    $x_{k+1} = \mathrm{F}_1(\vec{\bm{x}}_1)$ \\
+    $x_{k+2} = \mathrm{F}_2(\vec{\bm{x}}_2)$ \\
+    $\quad\pvdots$ \\
+    $x_{k+m} = \mathrm{F}_m(\vec{\bm{x}}_m)$ \\
+    \kw{return} $x_{k+m}$
+\end{pseudo}
+
+\noindent where each $\vec{\bm{x}}_i$ is a tuple of distinct variables from
+$x_1, \dots, x_{k+i-1}$, and no variable occurs in more than one of
+$\vec{\bm{x}}_1, \dots, \vec{\bm{x}}_m$. We require disjointness because the
+RRS model does not allow for duplication of variables.
+
+Denote $\vec{\bm{y}}_i$ the tuple of variables from $x_1, \dots, x_{k+i-1}$
+that occur in none of $\vec{\bm{x}}_1, \dots, \vec{\bm{x}}_i$, in increasing
+order of index. These are the variables unused in step $i$.
+
+We construct the RRS signature as follows:
+
+\begin{itemize}
+  \item $\rrsname{Runtime}$ is a constructor of arity 1;
+  \item $\rrsname{L}$ and $\rrsname{Nil}$ are constructors of arity 2 and 0
+  to represent lists;
+  \item $\rrsname{F_i}$ is a constructor of arity $|\vec{\bm{x}}_i|$;
+  \item $\rrsname{G}$ is a constructor of arity $k$;
+  \item $\rrsname{G_i}$ is a constructor of arity $|\vec{\bm{y}}_i|$.
+\end{itemize}
+
+We define the following rules, with $st$ standing for "stack tail":
+
+\begin{pseudo}
+  \kw{rule} $\rrsname{Runtime}(\rrsname{G}(x_1, \dots, x_k) :: st) \to 
+    \rrsname{Runtime}(\rrsname{F}_1(\vec{\bm{x}}_1) :: \rrsname{G}_1(\vec{\bm{y}}_1) :: st)$ \\
+  \kw{rule} $\rrsname{Runtime}(x_{k+1} :: \rrsname{G}_1(\vec{\bm{y}}_1) :: st) \to {}$
+    $\rrsname{Runtime}(\rrsname{F}_{2}(\vec{\bm{x}}_{2}) :: \rrsname{G}_{2}(\vec{\bm{y}}_{2}) :: st)$ \\
+  ... \\
+  \kw{rule} $\rrsname{Runtime}(x_{k+m} :: \rrsname{G}_m(\vec{\bm{y}}_m) :: st) \to {}$
+    $\rrsname{Runtime}(x_{k+m} :: st)$
+\end{pseudo}
+
+There rules guarantee that we rewrite $\rrsname{G}(x_1, \dots, x_k)$ at the
+top of the stack to $x_{k+m}$, while not touching the rest of the stack, i.e.:
+
+$$
+\rrsname{Runtime}(\rrsname{G}(x_1, \dots, x_k) :: st) \to \dots \to \rrsname{Runtime}(x_{k+m} :: st)
+$$
+
+
+\begin{example}\label{ex:call-stack}
+For the function
+
+\begin{pseudo}
+  \kw{function} $\mathrm{g}(x_1, x_2, x_3)$: \\+
+    $x_4 = \mathrm{f_1}(x_1, x_3)$ \\
+    $x_5 = \mathrm{f_2}(x_2, x_4)$ \\
+    \kw{return} $x_5$
+\end{pseudo}
+
+\noindent we have $\vec{\bm{x}}_1 = (x_1, x_3)$, $\vec{\bm{y}}_1 = (x_2)$, $\vec{\bm{x}}_2 = (x_2, x_4)$ and
+$\vec{\bm{y}}_2 = ()$. The corresponding RRS program is:
 
 \begin{rrscode}
 type Runtime(List<StackType>)
 
 type StackType {
-  # everything that can be on the stack
-}
-\end{rrscode}
-
-We'll show how to translate the following pseudocode into an RRS program:
-
-
-\begin{rrscode}
-function f(x_1, ..., x_k):
-  x_{k+1} = f_1(x_{S_1})
-  x_{k+2} = f_2(x_{S_2})
+  G(x1: T1, x2: T2, x3: T3),
+  G1(x2: T2),
+  G2,
+  # Stack type definitions for the rest of the program,
+  # including F1 and F2.
   ...
-  x_{k+m} = f_m(x_{S_m})
-  return x_{k+m}
-\end{rrscode}
+}
 
-\noindent where $S_i \subseteq \{1, \dots, k+i-1\}$ are pairwise disjoint and
-$x_S$ stands for the tuple $(x_j)_{j \in S}$ in increasing order of $j$.
-For example, in
+rule Runtime(G(x1, x2, x3) :: st)
+  -> Runtime(F1(x1, x3) :: G1(x2) :: st)
+rule Runtime(x4 :: G1(x2) :: st)
+  -> Runtime(F2(x2, x4) :: G2 :: st)
+rule Runtime(x5 :: G2 :: st)
+  -> Runtime(x5 :: st)
+\end{rrscode}
+\end{example}
+
+\begin{example}
+We will solve the \lstinline|TreeXor| problem from Exercise \ref{ex:tree-xor}.
 
 \begin{rrscode}
-function f(x_1, x_2, x_3):
-  x_4 = g(x_1, x_3)
-  x_5 = h(x_2, x_4)
-  return x_5
+# Assume Bit, Tree, TreeXor and List types are already defined.
+
+type Runtime(List<StackType>)
+
+type StackType {
+  TreeXor0(tree: Tree),
+  TreeXor1(right: Tree),
+  TreeXor2(xorleft: Bit),
+  Xor(bit1: Bit, bit2: Bit),
+  Result(bit: Bit),
+}
+
+# Implement Xor
+rule Runtime(Xor(B0, B0) :: st) -> Runtime(Result(B0) :: st)
+rule Runtime(Xor(B0, B1) :: st) -> Runtime(Result(B1) :: st)
+rule Runtime(Xor(B1, B0) :: st) -> Runtime(Result(B1) :: st)
+rule Runtime(Xor(B1, B1) :: st) -> Runtime(Result(B0) :: st)
+
+# Implement TreeXor
+rule Runtime(TreeXor0(Leaf(bit)) :: st)
+  -> Runtime(Result(bit) :: st)
+rule Runtime(TreeXor0(Branch(left, right)) :: st)
+  -> Runtime(TreeXor0(left) :: TreeXor1(right) :: st)
+rule Runtime(xorleft :: TreeXor1(right) :: st)
+  -> Runtime(TreeXor0(right) :: TreeXor2(xorleft) :: st)
+rule Runtime(xorright :: TreeXor2(xorleft) :: st)
+  -> Runtime(Xor(xorleft, xorright) :: st)
+
+# Rewrite to and from Runtime
+rule TreeXor(tree) -> Runtime(TreeXor0(tree) :: Nil)
+rule Runtime(Result(bit) :: Nil) -> bit
 \end{rrscode}
 
-\noindent we have $S_1 = \{1, 3\}$ and $S_2 = \{2, 4\}$.
+Note that the program is slightly verbose to satisfy the ADT restrictions.
+Without them, we could have removed the \lstinline|Result| and
+\lstinline|XorTree0| constructors and instead used \lstinline|Bit|
+and \lstinline|XorTree| directly in the stack.
+\end{example}
 
 \begin{thebibliography}{9}
 
