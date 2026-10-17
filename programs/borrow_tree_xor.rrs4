@@ -74,6 +74,58 @@ fn TreeXor(Tree): Bit match {
         xorright => Xor(xorleft, xorright),
 }
 
+# Versions
+fn TreeXor(Tree): Bit match {
+    Leaf(bit) bit,
+    Branch(left, right) TreeXor(left) {
+        xorleft TreeXor(right) {
+            xorright Xor(xorleft, xorright)
+        }
+    }
+}
+
+fn TreeXor(Tree): Bit match {
+    Leaf(bit) => bit,
+    Branch(left, right) => TreeXor(left) {
+        xorleft => TreeXor(right) {
+            xorright => Xor(xorleft, xorright)
+        }
+    }
+}
+
+fn TreeXor(Tree): Bit match {
+    Leaf(bit) => bit,
+    Branch(left, right)
+        => TreeXor(left) xorleft
+        => TreeXor(right) xorright
+        => Xor(xorleft, xorright)
+    }
+}
+
+fn Wrap(Tree): Tree {
+    tree -> Branch(tree, B0)
+}
+fn Wrap(tree: Tree): Tree => Branch(tree, B0)
+
+fn TreeXor(Tree): Bit {
+    Leaf(bit) => bit,
+    Branch(left, right)
+        => TreeXor(left) as xorleft
+        => TreeXor(right) as xorright
+        => Xor(xorleft, xorright)
+    }
+}
+
+fn TreeXor(Tree): Bit match {
+    Leaf(bit) -> bit,
+    Branch(left, right)
+        -> TreeXor(left) match xorleft
+        -> TreeXor(right) match xorright
+        -> Xor(xorleft, xorright)
+    }
+}
+
+
 # Inverted
 fn TreeXor(Tree): Bit match {
     Leaf(bit) => bit;
@@ -82,3 +134,25 @@ fn TreeXor(Tree): Bit match {
         xorright = TreeXor(right),
         Xor(xorleft, xorright);
 }
+
+
+# Grammar for:
+fn TreeXor(Tree): Bit match {
+    Leaf(bit) -> bit,
+    Branch(left, right)
+        -> TreeXor(left) match xorleft
+        -> TreeXor(right) match xorright
+        -> Xor(xorleft, xorright),
+}
+
+<FnDecl> ::= fn <FnName>(<ArgTypes>): <Type> match <MatchExpr>
+<MatchExpr> ::=
+    | <MatchCase>
+    | { <MatchCaseList> }
+<MatchCaseList> ::=
+    | <MatchCase>
+    | <MatchCase>,
+    | <MatchCase>, <MatchCaseList>
+<MatchCase> ::=
+    | <VarTerm> -> <VarTerm>
+    | <VarTerm> -> <VarTerm> match <MatchExpr>

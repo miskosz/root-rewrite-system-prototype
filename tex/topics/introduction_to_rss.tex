@@ -656,7 +656,7 @@ rule Runtime(x5 :: G2 :: st)
 \end{rrscode}
 \end{example}
 
-\begin{example}
+\begin{example}\label{ex:tree-xor-solution}
 We will solve the \lstinline|TreeXor| problem from Exercise \ref{ex:tree-xor}.
 
 \begin{rrscode}
@@ -699,6 +699,67 @@ Without them, we could have removed the \lstinline|Result| and
 and \lstinline|XorTree| directly in the stack.
 \end{example}
 
+\subsubsection{Pattern matching}
+
+The method above, how to translate sequential calls to an RRS implementation,
+was presented without any conditional branching on the
+subroutine results. With RRS it is easy to implement such branching with
+pattern matching, as we indeed did in Example \ref{ex:tree-xor-solution}.
+
+We will turn this into a language feature. We invert the assignment notation,
+instead of "$x = F(y)$" we write "$F(y) \textrm{ match } x$".
+
+\begin{rrscode}
+# Assume Bit, Tree, TreeXor and List types are already defined.
+
+type Runtime(List<StackType>)
+
+type StackType {
+  TreeXor0(tree: Tree),
+  TreeXor1(right: Tree),
+  TreeXor2(xorleft: Bit),
+  Xor(bit1: Bit, bit2: Bit),
+  Result(bit: Bit),
+}
+
+# Implement Xor
+rule Runtime(Xor(B0, B0) :: st) -> Runtime(Result(B0) :: st)
+rule Runtime(Xor(B0, B1) :: st) -> Runtime(Result(B1) :: st)
+rule Runtime(Xor(B1, B0) :: st) -> Runtime(Result(B1) :: st)
+rule Runtime(Xor(B1, B1) :: st) -> Runtime(Result(B0) :: st)
+
+# Implement TreeXor
+rule Runtime(TreeXor0(Leaf(bit)) :: st)
+  -> Runtime(Result(bit) :: st)
+rule Runtime(TreeXor0(Branch(left, right)) :: st)
+  -> Runtime(TreeXor0(left) :: TreeXor1(right) :: st)
+rule Runtime(xorleft :: TreeXor1(right) :: st)
+  -> Runtime(TreeXor0(right) :: TreeXor2(xorleft) :: st)
+rule Runtime(xorright :: TreeXor2(xorleft) :: st)
+  -> Runtime(Xor(xorleft, xorright) :: st)
+
+# Rewrite to and from Runtime
+rule TreeXor(tree) -> Runtime(TreeXor0(tree) :: Nil)
+rule Runtime(Result(bit) :: Nil) -> bit
+
+fn Xor(Bit, Bit): Result {
+  (B0, B0) -> Result(B0),
+  (B0, B1) -> Result(B1),
+  (B1, B0) -> Result(B1),
+  (B1, B1) -> Result(B0),
+}
+
+fn TreeXor(Tree): Result {
+  Leaf(bit) -> Result(bit),
+  Branch(left, right) -> TreeXor(left) {
+    xorleft -> TreeXor(right) {
+      xorright -> Xor(xorleft, xorright)
+    }
+  }
+}
+
+\end{rrscode}
+
 \begin{thebibliography}{9}
 
 \bibitem{sipser2013}
@@ -712,6 +773,11 @@ Sanjeev Arora and Boaz Barak.
 \emph{Computational Complexity: A Modern Approach}.
 Cambridge University Press, Cambridge, 2009.
 ISBN 978-0-521-42426-4.
+
+\bibitem{spiwack2015}
+Arnaud Spiwack.
+\emph{The tree machine}.
+arXiv preprint arXiv:1507.04589, 2015.
 
 \end{thebibliography}
 
