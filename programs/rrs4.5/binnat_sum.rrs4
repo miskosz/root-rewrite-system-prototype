@@ -1,0 +1,34 @@
+# RRS4.5 with trimmed down syntax.
+# SKIP system
+
+# BinNat is just List<Bit>, least significant bit first.
+
+type Bit {
+    B0;
+    B1;
+}
+
+fn SumBit(a: Bit, b: Bit, carry: Bit): (sum: Bit, carry: Bit) match {
+    (B0, B0, B0) -> (B0, B0);
+    (B0, B1, B0) -> (B1, B0);
+    (B1, B0, B0) -> (B1, B0);
+    (B1, B1, B0) -> (B0, B1);
+    (B0, B0, B1) -> (B1, B0);
+    (B0, B1, B1) -> (B0, B1);
+    (B1, B0, B1) -> (B0, B1);
+    (B1, B1, B1) -> (B1, B1);
+}
+
+fn Sum(List<Bit>, List<Bit>): List<Bit> match (a, b)
+    -> SumCarry(a, b, B0);
+
+fn SumCarry(List<Bit>, List<Bit>, Bit): List<Bit> match {
+    (Nil, Nil, B0) -> Nil;
+    (Nil, Nil, B1) -> B1 :: Nil;
+    (Nil, b, c) -> SumCarry(B0 :: Nil, b, c);
+    (a, Nil, c) -> SumCarry(a, B0 :: Nil, c);
+    (ah :: at, bh :: bt, c)
+        -> SumBit(ah, bh, c) match (sumhead, c)
+        -> SumCarry(at, bt, c) match sumtail
+        -> sumhead :: sumtail;
+}
