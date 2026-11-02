@@ -1,0 +1,182 @@
+# RRS4.5 with trimmed down syntax.
+
+###
+### begin system
+###
+
+type List<T> {
+    Nil,
+    L(head: T, tail: List<T>),
+}
+
+open type StackType
+type Runtime(stack: List<StackType>)
+
+###
+### end system
+###
+
+type Nat {
+    E,
+    S(Nat),
+}
+
+type Term {
+    Var(id: Nat),
+    Node(id: Nat, children: List<Term>),
+}
+
+# Copy helpers
+
+fn CopyNat(Nat): (Nat, Nat) match {
+    E -> (E, E),
+    S(n)
+        -> CopyNat(n) match (n1, n2)
+        -> (S(n1), S(n2)),
+}
+
+fn CopyTerm(Term): (Term, Term) match {
+    Var(id)
+        -> CopyNat(id) match (id1, id2)
+        -> (Var(id1), Var(id2)),
+    Node(id, ch)
+        -> CopyNat(id) match (id1, id2)
+        -> CopyTerms(ch) match (ch1, ch2)
+        -> (Node(id1, ch1), Node(id2, ch2)),
+}
+
+fn CopyTerms(List<Term>): (List<Term>, List<Term>) match {
+    Nil -> (Nil, Nil),
+    head :: tail
+        -> CopyTerm(head) match (head1, head2)
+        -> CopyTerms(tail) match (tail1, tail2)
+        -> (head1 :: tail1, head2 :: tail2),
+}
+
+# Other helpers
+
+fn NatEq(Nat, Nat): {
+    NoNatEq(Nat, Nat),
+    YesNatEq(Nat, Nat),
+} match {
+    (E, E) -> YesNatEq(E, E),
+    (S(a), S(b))
+        -> NatEq(a, b) match {
+            NoNatEq(a, b) -> NoNatEq(S(a), S(b)),
+            YesNatEq(a, b) -> YesNatEq(S(a), S(b)),
+        },
+    (a, b) -> NoNatEq(a, b),
+}
+
+fn MergeList<T>(List<T>, List<T>): List<T> match {
+    (Nil, lst) -> lst,
+    (head :: tail, lst)
+        -> MergeList(tail, lst) match lst
+        -> head :: lst,
+}
+
+# Substitution
+
+type Bind(id: Nat, term: Term)
+
+fn FindBind(id: Nat, binds: List<Bind>): {
+    NoFindBind(id: Nat, binds: List<Bind>),
+    YesFindBind(id: Nat, unused_binds: List<Bind>, bind: Bind),
+} match {
+    (id, Nil) -> NoFindBind(id, Nil),
+    (id1, Bind(id2, term) :: tail) -> NatEq(id1, id2) match {
+        NoNatEq(id1, id2) -> FindBind(id1, tail) match {
+            NoFindBind(id1, tail) -> NoFindBind(id1, Bind(id2, term) :: tail),
+            YesFindBind(id1, unused_tail, bind) -> YesFindBind(id1, Bind(id2, term) :: unused_tail, bind),
+        },
+        YesNatEq(id1, id2) -> YesFindBind(id1, tail, Bind(id2, term)),
+    },
+}
+
+fn SubstituteTerm(term: Term, binds: List<Bind>): (term: Term, unused_binds: List<Bind>) match {
+    (Var(id), binds) -> FindBind(id, binds) match {
+        NoFindBind(id, binds) -> (Var(id), binds),
+        YesFindBind(_id1, unused_binds, Bind(_id2, term)) -> (term, unused_binds),
+    },
+    (Node(id, children), binds)
+        -> SubstituteTerms(children, binds) match (children, binds)
+        -> (Node(id, children), binds),
+}
+
+fn SubstituteTerms(
+    terms: List<Term>, binds: List<Bind>
+): (terms: List<Term>, unused_binds: List<Bind>) match {
+    (Nil, binds) -> (Nil, binds),
+    (head :: tail, binds)
+        -> SubstituteTerm(head, binds) match (head, binds)
+        -> SubstituteTerms(tail, binds) match (tail, binds)
+        -> (head :: tail, binds),
+}
+
+# Match helpers
+
+fn MatchTerm(pattern: Term, term: Term): {
+    NoMatchTerm(pattern: Term, term: Term),
+    YesMatchTerm(pattern1: Term, pattern2: Term, binds: List<Bind>),
+} match {
+    (Var(id), term)
+        -> CopyNat(id) match (id1, id2)
+        -> CopyNat(id2) match (id2, id3)
+        -> YesMatchTerm(Var(id1), Var(id2), Bind(id3, term) :: Nil),
+    (Node(id1, ch1), Node(id2, ch2)) -> NatEq(id1, id2) match {
+        NoNatEq(id1, id2) -> NoMatchTerm(Node(id1, ch1), Node(id2, ch2)),
+        YesNatEq(id1, id2) -> MatchTerms(ch1, ch2) match {
+            NoMatchTerms(ch1, ch2) -> NoMatchTerm(Node(id1, ch1), Node(id2, ch2)),
+            YesMatchTerms(pats1, pats2, binds)
+                -> YesMatchTerm(Node(id1, pats1), Node(id2, pats2), binds),
+        },
+    },
+    (pattern, term) -> NoMatchTerm(pattern, term),
+}
+
+fn MatchTerms(pats: List<Term>, terms: List<Term>): {
+    NoMatchTerms(pats: List<Term>, terms: List<Term>),
+    YesMatchTerms(pats1: List<Term>, pats2: List<Term>, binds: List<Bind>),
+} match {
+    (Nil, Nil) -> YesMatchTerms(Nil, Nil, Nil),
+    (phead :: ptail, thead :: ttail) -> MatchTerm(phead, thead) match {
+        NoMatchTerm(phead, thead) -> NoMatchTerms(phead :: ptail, thead :: ttail),
+        YesMatchTerm(phead1, phead2, headbinds) -> MatchTerms(ptail, ttail) match {
+            NoMatchTerms(ptail, ttail)
+                -> SubstituteTerm(phead2, headbinds) match (thead, _unused_binds)
+                -> NoMatchTerms(phead1 :: ptail, thead :: ttail),
+            YesMatchTerms(ptail1, ptail2, tailbinds)
+                -> MergeList(headbinds, tailbinds) match binds
+                -> YesMatchTerms(phead1 :: ptail1, phead2 :: ptail2, binds),
+        },
+    },
+    (pats, terms) -> NoMatchTerms(pats, terms),
+}
+
+# RRS
+
+type Rule(lhs: Term, rhs: Term)
+
+fn StepRRS(term: Term, rules: List<Rule>): {
+    NoStepRRS(term: Term, rules: List<Rule>),
+    YesStepRRS(newterm: Term, rules: List<Rule>),
+} match {
+    (term, Nil) -> NoStepRRS(term, Nil),
+    (term, Rule(lhs, rhs) :: tail) -> MatchTerm(lhs, term) match {
+        NoMatchTerm(lhs, term) -> StepRRS(term, tail) match {
+            NoStepRRS(term, tail) -> NoStepRRS(term, Rule(lhs, rhs) :: tail),
+            YesStepRRS(newterm, tail) -> YesStepRRS(newterm, Rule(lhs, rhs) :: tail),
+        },
+        YesMatchTerm(lhs1, _lhs2, binds)
+            -> CopyTerm(rhs) match (rhs1, rhs2)
+            -> SubstituteTerm(rhs2, binds) match (newterm, _unused_binds)
+            -> YesStepRRS(newterm, Rule(lhs1, rhs1) :: tail),
+    },
+}
+
+fn RunRRS(term: Term, rules: List<Rule>): Term match {
+    (term, rules) -> StepRRS(term, rules) match {
+        NoStepRRS(term, _rules) -> term,
+        YesStepRRS(newterm, rules) -> RunRRS(newterm, rules),
+    },
+}
