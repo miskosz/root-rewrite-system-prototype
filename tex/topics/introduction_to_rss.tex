@@ -378,11 +378,11 @@ this question open.
 
 TODO
 
-\section{Universal RRS}
+\section{RRS as a programming language}
 
-The goal of this section is to show that there exists a single RRS that can simulate any
-other RRS. We will show that the simulation is possible with only a constant factor overhead.
-In order to do that we first develop RRS as a programming language.
+The goal of the next section is to show that there exists a single RRS that can
+simulate any other RRS. In order to do that we first develop RRS as a programming
+language.
 
 \subsection{Compiler}
 
@@ -742,23 +742,81 @@ rule Runtime(xorright :: TreeXor2(xorleft) :: st)
 rule TreeXor(tree) -> Runtime(TreeXor0(tree) :: Nil)
 rule Runtime(Result(bit) :: Nil) -> bit
 
-fn Xor(Bit, Bit): Result {
-  (B0, B0) -> Result(B0),
-  (B0, B1) -> Result(B1),
-  (B1, B0) -> Result(B1),
-  (B1, B1) -> Result(B0),
+###########
+
+fn Xor(Bit, Bit): Result match {
+  (B0, B0) -> Result(B0);
+  (B0, B1) -> Result(B1);
+  (B1, B0) -> Result(B1);
+  (B1, B1) -> Result(B0);
 }
 
-fn TreeXor(Tree): Result {
-  Leaf(bit) -> Result(bit),
-  Branch(left, right) -> TreeXor(left) {
-    xorleft -> TreeXor(right) {
-      xorright -> Xor(xorleft, xorright)
-    }
-  }
+fn TreeXor(Tree): Result match {
+  Leaf(bit) -> Result(bit);
+  Branch(left, right)
+    -> TreeXor(left) match xorleft
+    -> TreeXor(right) match xorright
+    -> Xor(xorleft, xorright);
 }
 
 \end{rrscode}
+
+
+\section{Universal RRS}
+
+We show that there exists a single RRS that can simulate any other RRS.
+We will show that the simulation is possible with only a constant factor overhead.
+The constant depends only on the simulated RRS.
+
+Without the condition on the complexity the claim follows from Turing completeness.
+
+\subsection{Representing RRS}
+
+- represent terms
+
+- issue: infinite a. constructors, b. variables
+
+- solution: use natural numbers. we will need helpers for comparison and copying
+
+- with a fixed signature constant factor blowup
+
+\begin{rrscode}
+type Nat {
+    E;
+    S(Nat);
+}
+
+type Term {
+    Var(id: Nat);
+    Node(id: Nat, children: List<Term>);
+}
+
+type Rule(lhs: Term, rhs: Term)
+
+type RunRRS(term: Term, rules: List<Rule>)
+\end{rrscode}
+
+The algo:
+
+- in every step
+  - iterate over the rules (fixed number)
+    - if LHS matches the current term
+      - substitute variables in RHS
+      - break
+  - if no rule matched, terminate
+
+The matching must keep track of binds. Implemented recursively.
+If a subterm does not match, the whole partial match must be undone
+so that the next rule can attempt a match.
+
+Complexity: For one rule, we have to walk as much as LHS.
+
+For substitution, we mave to copy RHS and walk it to perform substitution.
+For every variable encountered we iterate over the unused binds.
+
+\begin{theorem}[URRS]
+Exists and quantify complexity.
+\end{theorem}
 
 \begin{thebibliography}{9}
 
