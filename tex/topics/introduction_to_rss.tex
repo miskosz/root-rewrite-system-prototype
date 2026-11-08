@@ -8,6 +8,16 @@
 \begin{document}
 \maketitle
 
+\begin{note}
+On naming. I wanted to call it \emph{Tree machine}, but the acronym
+TM already means Turing machine. And much later on I found out there is
+a paper (Spiwack) that uses it for a similar concept. While the RRS name
+refers nicely to term rewrite systems, the connection to deterministic machines
+is weak. Thus I wanted to rename to \emph{Root rewrite machine} (RRM). But
+currently, I like the more metaphorical \emph{Graft machine}. I have not settled
+on the name yet.
+\end{note}
+
 Root Rewrite System (RRS) is a model of computation operating on \emph{terms}. The
 definitions below use ideas from term rewriting systems and functional
 language features in e.g. ML, Haskell or Rust.
@@ -772,13 +782,17 @@ Without the condition on the complexity the claim follows from Turing completene
 
 \subsection{Representing RRS}
 
-- represent terms
+To simulate a RRS we need to encode it inputs: the definition of the RRS
+and the input term. The structure of RRS makes this easy, because the definition
+-- the program -- is just a list of pairs of terms with variables.
 
-- issue: infinite a. constructors, b. variables
+A slight bump on the road is that the constructors and variables come from
+a countably infinite set. Since our universal RRS can use only a fixed amount
+of constructors, we will use natural numbers to identify them.
 
-- solution: use natural numbers. we will need helpers for comparison and copying
-
-- with a fixed signature constant factor blowup
+A similar issue is that a constructor can have an arbitrary number of children.
+So to represent nodes in terms, we will remember two things: the ID of the
+constructor and a list of its children.
 
 \begin{rrscode}
 type Nat {
@@ -793,30 +807,105 @@ type Term {
 
 type Rule(lhs: Term, rhs: Term)
 
-type RunRRS(term: Term, rules: List<Rule>)
+type RunRRS(rules: List<Rule>, term: Term)
 \end{rrscode}
 
-The algo:
-
-- in every step
-  - iterate over the rules (fixed number)
-    - if LHS matches the current term
-      - substitute variables in RHS
-      - break
-  - if no rule matched, terminate
-
-The matching must keep track of binds. Implemented recursively.
-If a subterm does not match, the whole partial match must be undone
-so that the next rule can attempt a match.
-
-Complexity: For one rule, we have to walk as much as LHS.
-
-For substitution, we mave to copy RHS and walk it to perform substitution.
-For every variable encountered we iterate over the unused binds.
-
 \begin{theorem}[URRS]
-Exists and quantify complexity.
+There exists a RRS $U$ such that for any RRS $M$:
+
+\begin{itemize}
+  \item There exists an encoding $\tau: \TermsVar_M \to \TermsVar_U$ such that
+    $|\tau(t)| = O(|t|)$.
+  \item For any input $i \in \Terms_M$, $M$ terminates on $i$ with an output
+    term $o$ iff $U$ terminates on $(\hat{M}, \tau(i))$ with an output term
+    $\tau(o)$. In that case $\Steps(U, (\hat{M}, \tau(i))) = O(\Steps(M, i))$.
+\end{itemize}
+
+Moreover the constant in the big-oh notation in the first bullet depends
+only on the signature of $M$ and the number of variables its rules use.
+For the second bullet, the constant depends on the whole $M$.
+
 \end{theorem}
+
+TODO: The formalism above struggles. We need $\hat M$ to be $\tau(M)$ for
+the natural extension of $\tau$ to $\rrsname{List<Rule>}$.
+
+The $\tau$ mapping is explained above. (TODO: Maybe introduce it first,
+formally, not just informally?)
+
+The URRS implementation is rather straightforward:
+
+\begin{pseudo}
+  \kw{repeat}: \\+
+    \kw{for} each rule $l \to r$: \\+
+      \kw{if} $l$ matches the current term: \\+
+        substitute variables in $r$ \\
+        \kw{break} \\--
+    \kw{if} no rule matched: \\+
+      \kw{terminate}
+\end{pseudo}
+
+A full listing of the implementation can be found in the appendix. Here
+we comment only on key points how this can be implementaed and why there
+is only a constant factor time blowup.
+
+We implement URRS as a stack machine. The first and last step of the machine
+will translate to and from the following type:
+
+\begin{rrscode}
+type URRSImpl(List<StackType>)
+type StackType {
+  RunRRS(List<Rule>, Term);
+  Output(Term);
+  ...
+}
+\end{rrscode}
+
+We implement matching with the following signature in pseudocode.
+In the real implementation $\rrsname{MatchTerm}$, $\rrsname{NoMatchTerm}$
+and $\rrsname{YesMatchTerm}$ would be variants of $\rrsname{StackType}$:
+
+\begin{rrscode}
+type Bind(id: Nat, term: Term)
+
+type MatchTerm(pattern: Term, term: Term)
+type MatchTermResult {
+  NoMatchTerm(pattern: Term, term: Term);
+  YesMatchTerm(pat1: Term, pat2: Term, binds: List<Bind>);
+}
+\end{rrscode}
+
+We must return the data back to avoid copying, and to allow undoing
+a partial match after one branch succeeds. For $\rrsname{YesMatchTerm}$,
+if the pattern matches, we extract binds of variables to the subterms.
+This happens when the pattern matches the "trunk" of the term. To
+avoid discarding the data, we return the pattern back twice.
+
+The URRS implementation can't avoid copying completely, however all the copying
+will be bounded. E.g. when creating binds for matching, we have to copy the
+ID of the variable that was matched. Or after a successful matching, we have to
+copy the RHS of a rule to substitute the binds in. They are bounded by the
+largest variable ID and largest RHS term size respectively.
+
+To illustrate the boundedness:
+
+\begin{pseudo}
+  \kw{repeat}: \\+
+    \kw{for} each rule $l \to r$: \ct{bounded by the number of rules} \\+
+      \ct{walk $l$ and the term simultaneously, constructing binds;} \\
+      \ct{bounded by the size of $l$} \\
+      \kw{if} $l$ matches the current term: \\+
+        \ct{copy $r$, then walk it, searching encountered variables} \\
+        \ct{in binds; if found, substitute it} \\
+        substitute variables in $r$ \\
+        \kw{break} \\--
+    \kw{if} no rule matched: \\+
+      \kw{terminate}
+\end{pseudo}
+
+TODO:
+- Turing does not do this
+- Tight time hierarchy theorem
 
 \begin{thebibliography}{9}
 
