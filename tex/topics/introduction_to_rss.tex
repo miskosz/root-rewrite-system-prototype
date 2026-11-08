@@ -903,9 +903,20 @@ To illustrate the boundedness:
       \kw{terminate}
 \end{pseudo}
 
+\subsection{Time Hierarchy Theorem}
+
+There is a key difference in universal machine simulation
+between RRS and multi-tape Turing machines. A universal Turing machine
+simulates other Turing machines with a logarithmic factor slowdown, while
+RRS only gets a constant factor slowdown. This has an effect,
+for example, on the time hierarchy theorem.
+
+
 TODO:
 - Turing does not do this
 - Tight time hierarchy theorem
+
+!!! I need to define complexity classes first.
 
 \begin{thebibliography}{9}
 
@@ -925,6 +936,13 @@ ISBN 978-0-521-42426-4.
 Arnaud Spiwack.
 \emph{The tree machine}.
 arXiv preprint arXiv:1507.04589, 2015.
+
+\bibitem{jones1993}
+Neil D. Jones.
+\emph{Constant time factors do matter}.
+In \emph{Proceedings of the 25th Annual ACM Symposium on Theory of Computing (STOC '93)},
+pages 602--611, ACM, San Diego, CA, 1993.
+doi:10.1145/167088.167244.
 
 \end{thebibliography}
 
